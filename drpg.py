@@ -14,11 +14,11 @@ from httpx import Client as HttpClient, StatusCode
 
 
 client = HttpClient(base_url="https://www.drivethrurpg.com")
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("drpg")
 
 
 def setup_logger():
-    level_name = environ.get("DTRPG_LOGLEVEL", "INFO")
+    level_name = environ.get("DRPG_LOGLEVEL".upper(), "INFO")
     level = logging.getLevelName(level_name)
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(level)
@@ -39,14 +39,6 @@ def login(token):
 
 
 def get_products(customer_id, access_token, per_page=100):
-    """
-    resp_pagination_ends = {"status": "success", "message": []}
-    """
-
-    # URL from app with more params:
-    #  "fields": "products_name,cover_url,date_purchased,products_filesize,publishers_name,products_thumbnail100",
-    #  "embed": "files.filename,files.last_modified,files.checksums,files.raw_filesize,filters.filters_name,filters.filters_id,filters.parent_id",
-
     get_product_page = partial(
         client.get,
         f"/api/v1/customers/{customer_id}/products",
@@ -64,6 +56,15 @@ def get_products(customer_id, access_token, per_page=100):
 
 
 def _get_products_page(func, page, per_page):
+    """
+    Available "fields" values:
+      products_name, cover_url, date_purchased, products_filesize, publishers_name,
+      products_thumbnail100
+    Available "embed" values:
+      files.filename, files.last_modified, files.checksums, files.raw_filesize,
+      filters.filters_name, filters.filters_id, filters.parent_id
+    """
+
     return func(
         params={
             "page": page,
@@ -75,12 +76,7 @@ def _get_products_page(func, page, per_page):
     ).json()["message"]
 
 
-def need_download(product, item):
-    logger.debug(
-        "Deciding if %s from %s needs to be downloaded",
-        item["filename"],
-        product["products_name"],
-    )
+def need_download(product, item, precisely=False):
     path = get_file_path(product, item)
 
     if not path.exists():
@@ -93,11 +89,12 @@ def need_download(product, item):
     if remote_time > local_time:
         return True
 
-    if checksum := get_newest_checksum(item):
+    if precisely and (checksum := get_newest_checksum(item)):
         with open(path, "rb") as f:
             if md5(f.read()).hexdigest() != checksum:
                 return True
 
+    logger.debug("Up to date: %s - %s", product["products_name"], item["filename"])
     return False
 
 
@@ -113,7 +110,7 @@ def get_download_url(product_id, item_id, access_token):
     )
 
     while (data := resp.json()["message"])["progress"].startswith("Preparing download"):
-        logger.info("Waiting for item %s - %s to be ready for download", product_id, item_id)
+        logger.info("Waiting to download: %s - %s", product_id, item_id)
         sleep(3)
         task_id = data["file_tasks_id"]
         resp = client.get(
@@ -146,12 +143,12 @@ def get_newest_checksum(item):
 def save_item(path, content):
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(path, "wb") as ff:
-        ff.write(content)
+    with open(path, "wb") as item_file:
+        item_file.write(content)
 
 
 def process_item(product, item, access_token):
-    logger.info("Processing %s from %s", item["filename"], product["products_name"])
+    logger.info("Processing: %s - %s", product["products_name"], item["filename"])
     url_data = get_download_url(product["products_id"], item["bundle_id"], access_token)
     name, content = get_file(url_data["download_url"])
     save_item(get_file_path(product, item), content)
@@ -159,6 +156,7 @@ def process_item(product, item, access_token):
 
 def sync():
     login_data = login(environ["DRPG_TOKEN"])
+    precisely = environ.get("DRPG_PRECISELY", "").lower() == "true"
     products = get_products(
         login_data["customers_id"], login_data["access_token"], per_page=100
     )
@@ -166,11 +164,12 @@ def sync():
         (product, item, login_data["access_token"])
         for product in products
         for item in product.pop("files")
-        if need_download(product, item)
+        if need_download(product, item, precisely)
     )
 
     with ThreadPool(5) as pool:
         pool.starmap(process_item, items)
+    logger.info("Done!")
 
 
 if __name__ == "__main__":

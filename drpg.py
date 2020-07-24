@@ -3,14 +3,27 @@ from contextlib import closing
 from datetime import datetime, timedelta
 from functools import partial
 from hashlib import md5
+from multiprocessing.pool import ThreadPool
 from os import environ
 from pathlib import Path
 from time import sleep, timezone
+import logging
+import sys
 
 from httpx import Client as HttpClient, StatusCode
 
 
 client = HttpClient(base_url="https://www.drivethrurpg.com")
+logger = logging.getLogger(__name__)
+
+
+def setup_logger():
+    level_name = environ.get("DTRPG_LOGLEVEL", "INFO")
+    level = logging.getLevelName(level_name)
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(level)
+    logger.addHandler(handler)
+    logger.setLevel(level)
 
 
 def login(token):
@@ -45,6 +58,7 @@ def get_products(customer_id, access_token, per_page=100):
     page = 1
 
     while result := _get_products_page(get_product_page, page, per_page):
+        logger.debug("Yielding products page %d", page)
         yield from result
         page += 1
 
@@ -62,6 +76,11 @@ def _get_products_page(func, page, per_page):
 
 
 def need_download(product, item):
+    logger.debug(
+        "Deciding if %s from %s needs to be downloaded",
+        item["filename"],
+        product["products_name"],
+    )
     path = get_file_path(product, item)
 
     if not path.exists():
@@ -94,6 +113,7 @@ def get_download_url(product_id, item_id, access_token):
     )
 
     while (data := resp.json()["message"])["progress"].startswith("Preparing download"):
+        logger.info("Waiting for item %s - %s to be ready for download", product_id, item_id)
         sleep(3)
         task_id = data["file_tasks_id"]
         resp = client.get(
@@ -130,26 +150,30 @@ def save_item(path, content):
         ff.write(content)
 
 
+def process_item(product, item, access_token):
+    logger.info("Processing %s from %s", item["filename"], product["products_name"])
+    url_data = get_download_url(product["products_id"], item["bundle_id"], access_token)
+    name, content = get_file(url_data["download_url"])
+    save_item(get_file_path(product, item), content)
+
+
 def sync():
     login_data = login(environ["DRPG_TOKEN"])
     products = get_products(
         login_data["customers_id"], login_data["access_token"], per_page=100
     )
     items = (
-        (product, item)
+        (product, item, login_data["access_token"])
         for product in products
         for item in product.pop("files")
         if need_download(product, item)
     )
 
-    for product, item in items:
-        link = get_download_url(
-            product["products_id"], item["bundle_id"], login_data["access_token"]
-        )["download_url"]
-        name, content = get_file(link)
-        save_item(get_file_path(product, item), content)
+    with ThreadPool(5) as pool:
+        pool.starmap(process_item, items)
 
 
 if __name__ == "__main__":
+    setup_logger()
     with closing(client):
         sync()

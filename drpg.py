@@ -78,7 +78,7 @@ def _get_products_page(func, page, per_page):
 
 def need_download(product, item, precisely=False):
     path = get_file_path(product, item)
-    
+
     if not path.exists():
         return True
 

@@ -70,7 +70,7 @@ def _get_products_page(func, page, per_page):
             "page": page,
             "per_page": per_page,
             "include_archived": 0,
-            "fields": "products_name",
+            "fields": "publishers_name,products_name",
             "embed": "files.filename,files.last_modified,files.checksums",
         }
     ).json()["message"]
@@ -129,7 +129,10 @@ def get_file(url):
 
 
 def get_file_path(product, item):
-    return Path("repository") / product["products_name"] / item["filename"]
+    publishers_name = product.get("publishers_name","Others")
+    product_name =  product["products_name"].replace(":","_")
+
+    return Path("repository") / publishers_name / product_name / item["filename"]
 
 
 def get_newest_checksum(item):

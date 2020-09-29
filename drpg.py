@@ -129,8 +129,8 @@ def get_file(url):
 
 
 def get_file_path(product, item):
-    publishers_name = product.get("publishers_name","Others")
-    product_name =  product["products_name"].replace(":","_")
+    publishers_name = product.get("publishers_name", "Others")
+    product_name = product["products_name"].replace(":", "_")
 
     return Path("repository") / publishers_name / product_name / item["filename"]
 

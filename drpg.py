@@ -11,7 +11,7 @@ import logging
 import re
 import sys
 
-from httpx import Client as HttpClient, StatusCode
+from httpx import Client as HttpClient, codes
 
 
 client = HttpClient(base_url="https://www.drivethrurpg.com")
@@ -34,7 +34,7 @@ def login(token):
         headers={"Authorization": f"Bearer {token}"},
     )
 
-    if resp.status_code == StatusCode.UNAUTHORIZED:
+    if resp.status_code == codes.UNAUTHORIZED:
         raise AttributeError("Provided token is invalid")
     return resp.json()["message"]
 

@@ -8,6 +8,7 @@ from os import environ
 from pathlib import Path
 from time import sleep, timezone
 import logging
+import re
 import sys
 
 from httpx import Client as HttpClient, StatusCode
@@ -129,10 +130,18 @@ def get_file(url):
 
 
 def get_file_path(product, item):
-    publishers_name = product.get("publishers_name", "Others")
-    product_name = product["products_name"].replace(":", "_")
+    publishers_name = _escape_path_part(product.get("publishers_name", "Others"))
+    product_name = _escape_path_part(product["products_name"])
+    item_name = _escape_path_part(item["filename"])
+    return Path("repository") / publishers_name / product_name / item_name
 
-    return Path("repository") / publishers_name / product_name / item["filename"]
+
+def _escape_path_part(part: str) -> str:
+    separator = " - "
+    part = re.sub(r'[<>:"/\\|?*]', separator, part).strip(separator)
+    part = re.sub(f"({separator})+", separator, part)
+    part = re.sub(r"\s+", " ", part)
+    return part
 
 
 def get_newest_checksum(item):

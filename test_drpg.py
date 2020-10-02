@@ -71,7 +71,6 @@ class LoginTest(TestCase):
 class GetProductsTest(TestCase):
     def setUp(self):
         self.customer_id = "123"
-        self.access_token = "access_token"
         url = f"/api/v1/customers/{self.customer_id}/products"
         self.products_page = re.compile(f"{url}\\?.+$")
 
@@ -81,7 +80,7 @@ class GetProductsTest(TestCase):
         respx_mock.get(self.products_page, content={"message": page_1_products})
         respx_mock.get(self.products_page, content={"message": []})
 
-        products = drpg.get_products(self.customer_id, self.access_token)
+        products = drpg.get_products(self.customer_id)
         self.assertEqual(list(products), page_1_products)
 
     @respx.mock(base_url=api_url)
@@ -92,7 +91,7 @@ class GetProductsTest(TestCase):
         respx_mock.get(self.products_page, content={"message": page_2_products})
         respx_mock.get(self.products_page, content={"message": []})
 
-        products = drpg.get_products(self.customer_id, self.access_token)
+        products = drpg.get_products(self.customer_id)
         self.assertEqual(list(products), page_1_products + page_2_products)
 
 
@@ -110,7 +109,7 @@ class GetDownloadUrlTest(TestCase):
     def test_immiediate_download_url(self, respx_mock):
         respx_mock.post(self.file_tasks_url, content=self.response_ready)
 
-        file_data = drpg.get_download_url("product_id", "item_id", "access_token")
+        file_data = drpg.get_download_url("product_id", "item_id")
         self.assertEqual(file_data, self.response_ready["message"])
 
     @mock.patch("drpg.sleep")
@@ -119,7 +118,7 @@ class GetDownloadUrlTest(TestCase):
         respx_mock.post(self.file_tasks_url, content=self.response_preparing)
         respx_mock.get(self.file_task_url, content=self.response_ready)
 
-        file_data = drpg.get_download_url("product_id", "item_id", "access_token")
+        file_data = drpg.get_download_url("product_id", "item_id")
         self.assertEqual(file_data, self.response_ready["message"])
 
 

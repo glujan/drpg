@@ -1,4 +1,3 @@
-from cgi import parse_header
 from contextlib import closing
 from datetime import datetime, timedelta
 from functools import partial
@@ -17,6 +16,8 @@ from httpx import Client as HttpClient, codes
 client = HttpClient(base_url="https://www.drivethrurpg.com")
 logger = logging.getLogger("drpg")
 
+checksum_time_format = "%Y-%m-%d %H:%M:%S"
+
 
 def setup_logger():
     level_name = environ.get("DRPG_LOGLEVEL".upper(), "INFO")
@@ -28,9 +29,10 @@ def setup_logger():
 
 
 def login(token):
+    # Available "fields" values: first_name, last_name, customers_id
     resp = client.post(
         "/api/v1/token",
-        params={"fields": "first_name,last_name,customers_id"},
+        params={"fields": "customers_id"},
         headers={"Authorization": f"Bearer {token}"},
     )
 
@@ -102,7 +104,7 @@ def need_download(product, item, precisely=False):
 def get_download_url(product_id, item_id, access_token):
     resp = client.post(
         "/api/v1/file_tasks",
-        params={"fields": "download_url,progress"},
+        params={"fields": "download_url,progress,checksums"},
         data={"products_id": product_id, "bundle_id": item_id},
         headers={
             "Content-Type": "application/x-www-form-urlencoded",
@@ -120,13 +122,6 @@ def get_download_url(product_id, item_id, access_token):
             headers={"Authorization": f"Bearer {access_token}"},
         )
     return data
-
-
-def get_file(url):
-    resp = client.get(url)
-    content_disposition = resp.headers.get("content-disposition")
-    _, val = parse_header(content_disposition)
-    return val["filename"], resp.content
 
 
 def get_file_path(product, item):
@@ -148,7 +143,7 @@ def get_newest_checksum(item):
     return max(
         item["checksums"],
         default={"checksum": None},
-        key=lambda s: datetime.strptime(s["checksum_date"], "%Y-%m-%d %H:%M:%S"),
+        key=lambda s: datetime.strptime(s["checksum_date"], checksum_time_format),
     )["checksum"]
 
 
@@ -162,8 +157,8 @@ def save_item(path, content):
 def process_item(product, item, access_token):
     logger.info("Processing: %s - %s", product["products_name"], item["filename"])
     url_data = get_download_url(product["products_id"], item["bundle_id"], access_token)
-    name, content = get_file(url_data["download_url"])
-    save_item(get_file_path(product, item), content)
+    file_response = client.get(url_data["download_url"])
+    save_item(get_file_path(product, item), file_response.content)
 
 
 def sync():

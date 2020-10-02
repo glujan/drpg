@@ -1,4 +1,3 @@
-from cgi import parse_header
 from contextlib import closing
 from datetime import datetime, timedelta
 from functools import partial
@@ -11,11 +10,13 @@ import logging
 import re
 import sys
 
-from httpx import Client as HttpClient, StatusCode
+from httpx import Client as HttpClient, codes
 
 
 client = HttpClient(base_url="https://www.drivethrurpg.com")
 logger = logging.getLogger("drpg")
+
+checksum_time_format = "%Y-%m-%d %H:%M:%S"
 
 
 def setup_logger():
@@ -28,25 +29,24 @@ def setup_logger():
 
 
 def login(token):
+    # Available "fields" values: first_name, last_name, customers_id
     resp = client.post(
         "/api/v1/token",
-        params={"fields": "first_name,last_name,customers_id"},
+        params={"fields": "customers_id"},
         headers={"Authorization": f"Bearer {token}"},
     )
 
-    if resp.status_code == StatusCode.UNAUTHORIZED:
+    if resp.status_code == codes.UNAUTHORIZED:
         raise AttributeError("Provided token is invalid")
+
     return resp.json()["message"]
 
 
-def get_products(customer_id, access_token, per_page=100):
+def get_products(customer_id, per_page=100):
     get_product_page = partial(
         client.get,
         f"/api/v1/customers/{customer_id}/products",
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {access_token}",
-        },
+        headers={"Content-Type": "application/json"},
     )
     page = 1
 
@@ -99,15 +99,12 @@ def need_download(product, item, precisely=False):
     return False
 
 
-def get_download_url(product_id, item_id, access_token):
+def get_download_url(product_id, item_id):
     resp = client.post(
         "/api/v1/file_tasks",
-        params={"fields": "download_url,progress"},
+        params={"fields": "download_url,progress,checksums"},
         data={"products_id": product_id, "bundle_id": item_id},
-        headers={
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Authorization": f"Bearer {access_token}",
-        },
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
 
     while (data := resp.json()["message"])["progress"].startswith("Preparing download"):
@@ -117,16 +114,8 @@ def get_download_url(product_id, item_id, access_token):
         resp = client.get(
             f"/api/v1/file_tasks/{task_id}",
             params={"fields": "download_url,progress,checksums"},
-            headers={"Authorization": f"Bearer {access_token}"},
         )
     return data
-
-
-def get_file(url):
-    resp = client.get(url)
-    content_disposition = resp.headers.get("content-disposition")
-    _, val = parse_header(content_disposition)
-    return val["filename"], resp.content
 
 
 def get_file_path(product, item):
@@ -148,7 +137,7 @@ def get_newest_checksum(item):
     return max(
         item["checksums"],
         default={"checksum": None},
-        key=lambda s: datetime.strptime(s["checksum_date"], "%Y-%m-%d %H:%M:%S"),
+        key=lambda s: datetime.strptime(s["checksum_date"], checksum_time_format),
     )["checksum"]
 
 
@@ -159,21 +148,21 @@ def save_item(path, content):
         item_file.write(content)
 
 
-def process_item(product, item, access_token):
+def process_item(product, item):
     logger.info("Processing: %s - %s", product["products_name"], item["filename"])
-    url_data = get_download_url(product["products_id"], item["bundle_id"], access_token)
-    name, content = get_file(url_data["download_url"])
-    save_item(get_file_path(product, item), content)
+    url_data = get_download_url(product["products_id"], item["bundle_id"])
+    file_response = client.get(url_data["download_url"])
+    save_item(get_file_path(product, item), file_response.content)
 
 
 def sync():
     login_data = login(environ["DRPG_TOKEN"])
+    client.headers["Authorization"] = f"Bearer {login_data['access_token']}"
+
     precisely = environ.get("DRPG_PRECISELY", "").lower() == "true"
-    products = get_products(
-        login_data["customers_id"], login_data["access_token"], per_page=100
-    )
+    products = get_products(login_data["customers_id"], per_page=100)
     items = (
-        (product, item, login_data["access_token"])
+        (product, item)
         for product in products
         for item in product.pop("files")
         if need_download(product, item, precisely)

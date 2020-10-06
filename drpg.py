@@ -90,10 +90,12 @@ def need_download(product, item, precisely=False):
     if remote_time > local_time:
         return True
 
-    if precisely and (checksum := get_newest_checksum(item)):
-        with open(path, "rb") as f:
-            if md5(f.read()).hexdigest() != checksum:
-                return True
+    if (
+        precisely
+        and (checksum := get_newest_checksum(item))
+        and md5(path.read_bytes()).hexdigest() != checksum
+    ):
+        return True
 
     logger.debug("Up to date: %s - %s", product["products_name"], item["filename"])
     return False
@@ -141,18 +143,13 @@ def get_newest_checksum(item):
     )["checksum"]
 
 
-def save_item(path, content):
-    path.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(path, "wb") as item_file:
-        item_file.write(content)
-
-
 def process_item(product, item):
     logger.info("Processing: %s - %s", product["products_name"], item["filename"])
     url_data = get_download_url(product["products_id"], item["bundle_id"])
     file_response = client.get(url_data["download_url"])
-    save_item(get_file_path(product, item), file_response.content)
+    path = get_file_path(product, item)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(file_response.content)
 
 
 def sync():

@@ -1,4 +1,9 @@
-from datetime import datetime
+from datetime import datetime, timedelta
+from functools import partial
+from hashlib import md5
+from os import stat_result
+from pathlib import Path
+from random import randint
 from typing import List, Optional
 from unittest import TestCase, mock
 from urllib.parse import urlencode
@@ -13,18 +18,25 @@ import drpg
 
 api_url = str(drpg.client.base_url)
 
+PathMock = partial(mock.Mock, spec=Path)
+
 
 def checksum_date_now():
     return datetime.now().strftime(drpg.checksum_time_format)
 
 
+def random_id():
+    return str(randint(100, 1000))
+
+
+@dataclasses.dataclass
+class _Checksum:
+    checksum: str
+    checksum_date: str = dataclasses.field(default_factory=checksum_date_now)
+
+
 @dataclasses.dataclass
 class FileTaskResponse:
-    @dataclasses.dataclass
-    class _Checksum:
-        checksum: str
-        checksum_date: str = dataclasses.field(default_factory=checksum_date_now)
-
     file_tasks_id: int
     download_url: Optional[str]
     progress: Optional[str]
@@ -36,7 +48,7 @@ class FileTaskResponse:
             file_task_id,
             "https://example.com/file.pdf",
             "Complete",
-            [cls._Checksum("md5hash") for _ in range(checksums_count)],
+            [_Checksum("md5hash") for _ in range(checksums_count)],
         )
         return dataclasses.asdict(instance)
 
@@ -46,6 +58,22 @@ class FileTaskResponse:
             file_task_id, "https://example.com/file.pdf", "Preparing download...", []
         )
         return dataclasses.asdict(instance)
+
+
+@dataclasses.dataclass
+class FileResponse:
+    filename: str
+    last_modified: str
+    checksums: List[_Checksum]
+    bundle_id: str = dataclasses.field(default_factory=random_id)
+
+
+@dataclasses.dataclass
+class ProductResponse:
+    products_name: str
+    publishers_name: str
+    files: List[FileResponse]
+    products_id: str = dataclasses.field(default_factory=random_id)
 
 
 class LoginTest(TestCase):
@@ -93,6 +121,88 @@ class GetProductsTest(TestCase):
 
         products = drpg.get_products(self.customer_id)
         self.assertEqual(list(products), page_1_products + page_2_products)
+
+
+class NeedDownloadTest(TestCase):
+    new_date = datetime.now()
+    old_date = new_date - timedelta(days=100)
+    file_content = b"some file content"
+
+    no_file_kwargs = {
+        "exists.return_value": False,
+        "read_bytes.side_effect": FileNotFoundError,
+        "stat.side_effect": FileNotFoundError,
+    }
+    old_file_kwargs = {
+        "exists.return_value": True,
+        "read_bytes.return_value": file_content,
+        "stat.return_value": mock.Mock(spec=stat_result, st_mtime=old_date.timestamp()),
+    }
+    new_file_kwargs = {
+        "exists.return_value": True,
+        "read_bytes.return_value": file_content,
+        "stat.return_value": mock.Mock(spec=stat_result, st_mtime=new_date.timestamp()),
+    }
+
+    @mock.patch("drpg.get_file_path", return_value=PathMock(**no_file_kwargs))
+    def test_no_local_file(self, _):
+        item = self.dummy_item(self.old_date)
+        product = self.dummy_product(item)
+
+        need = drpg.need_download(product, item)
+        self.assertTrue(need)
+
+    @mock.patch("drpg.get_file_path", return_value=PathMock(**old_file_kwargs))
+    def test_local_last_modified_older(self, _):
+        item = self.dummy_item(self.new_date)
+        product = self.dummy_product(item)
+
+        need = drpg.need_download(product, item)
+        self.assertTrue(need)
+
+    @mock.patch("drpg.get_file_path", return_value=PathMock(**new_file_kwargs))
+    def test_local_last_modified_newer(self, _):
+        item = self.dummy_item(self.old_date)
+        product = self.dummy_product(item)
+
+        need = drpg.need_download(product, item)
+        self.assertFalse(need)
+
+    @mock.patch("drpg.get_file_path", return_value=PathMock(**new_file_kwargs))
+    def test_md5_check(self, _):
+        with self.subTest("same md5"):
+            item = self.dummy_item(self.old_date)
+            product = self.dummy_product(item)
+
+            need = drpg.need_download(product, item, precisely=True)
+            self.assertFalse(need)
+
+        with self.subTest("different md5"):
+            item = self.dummy_item(self.old_date)
+            item["checksums"][0]["checksum"] += "not matching"
+            product = self.dummy_product(item)
+
+            need = drpg.need_download(product, item, precisely=True)
+            self.assertTrue(need)
+
+        with self.subTest("remote file has no checksum"):
+            item = self.dummy_item(self.old_date)
+            item["checksums"] = []
+            product = self.dummy_product(item)
+
+            need = drpg.need_download(product, item, precisely=True)
+            self.assertFalse(need)
+
+    def dummy_item(self, date):
+        file_md5 = md5(self.file_content).hexdigest()
+        return dataclasses.asdict(
+            FileResponse("file.pdf", date.isoformat(), [_Checksum(file_md5)])
+        )
+
+    def dummy_product(self, *files):
+        return dataclasses.asdict(
+            ProductResponse("Test rule book", "Test Publishing", files=files)
+        )
 
 
 class GetDownloadUrlTest(TestCase):
@@ -158,7 +268,33 @@ class EscapePathTest(TestCase):
         self.assertEqual(drpg._escape_path_part(name), "some - name")
 
 
-class GetNewestChecksum(TestCase):
+class GetNewestChecksumTest(TestCase):
     def test_no_checksums(self):
         checksum = drpg.get_newest_checksum({"checksums": []})
         self.assertIsNone(checksum)
+
+
+class ProcessItemTest(TestCase):
+    file_task = FileTaskResponse.complete("123")
+    content = b"content"
+
+    def setUp(self):
+        item = FileResponse("file.pdf", datetime.now().isoformat(), [_Checksum("md5")])
+        self.item = dataclasses.asdict(item)
+        self.product = dataclasses.asdict(
+            ProductResponse("Test rule book", "Test Publishing", files=[item])
+        )
+
+    @respx.mock(base_url=api_url)
+    @mock.patch("drpg.get_file_path", return_value=PathMock())
+    @mock.patch("drpg.get_download_url", return_value=file_task)
+    def test_writes_to_file(self, _, m_get_file_path, respx_mock):
+        respx_mock.get(self.file_task["download_url"], content=self.content)
+
+        path = m_get_file_path.return_value
+        type(path).parent = mock.PropertyMock(return_value=PathMock())
+
+        drpg.process_item(self.product, self.item)
+
+        path.parent.mkdir.assert_called_once_with(parents=True, exist_ok=True)
+        path.write_bytes.assert_called_once_with(self.content)

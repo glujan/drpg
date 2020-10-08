@@ -6,6 +6,7 @@ from multiprocessing.pool import ThreadPool
 from os import environ
 from pathlib import Path
 from time import sleep, timezone
+import argparse
 import logging
 import re
 import sys
@@ -14,13 +15,13 @@ from httpx import Client as HttpClient, codes
 
 
 client = HttpClient(base_url="https://www.drivethrurpg.com")
+config = None
 logger = logging.getLogger("drpg")
 
 checksum_time_format = "%Y-%m-%d %H:%M:%S"
 
 
-def setup_logger():
-    level_name = environ.get("DRPG_LOGLEVEL".upper(), "INFO")
+def setup_logger(level_name):
     level = logging.getLevelName(level_name)
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(level)
@@ -124,7 +125,7 @@ def get_file_path(product, item):
     publishers_name = _escape_path_part(product.get("publishers_name", "Others"))
     product_name = _escape_path_part(product["products_name"])
     item_name = _escape_path_part(item["filename"])
-    return Path("repository") / publishers_name / product_name / item_name
+    return config.library_path / publishers_name / product_name / item_name
 
 
 def _escape_path_part(part: str) -> str:
@@ -153,16 +154,15 @@ def process_item(product, item):
 
 
 def sync():
-    login_data = login(environ["DRPG_TOKEN"])
+    login_data = login(config.token)
     client.headers["Authorization"] = f"Bearer {login_data['access_token']}"
 
-    use_checksums = environ.get("DRPG_USE_CHECKSUMS", "").lower() == "true"
     products = get_products(login_data["customers_id"], per_page=100)
     items = (
         (product, item)
         for product in products
         for item in product.pop("files")
-        if need_download(product, item, use_checksums)
+        if need_download(product, item, config.use_checksums)
     )
 
     with ThreadPool(5) as pool:
@@ -170,7 +170,48 @@ def sync():
     logger.info("Done!")
 
 
+def setup(args=None):
+    parser = argparse.ArgumentParser(
+        description="Download and keep up to date your purchases from DriveThruRPG",
+        epilog="""
+            Instead of parameters you can use environment variables. Prefix
+            an option with DRPG_, capitalize it and replace '-' with '_'.
+            For instance '--use-checksums' becomes 'DRPG_USE_CHECKSUMS=true'.
+        """,
+    )
+    parser.add_argument(
+        "--token",
+        "-t",
+        required="DRPG_TOKEN" not in environ,
+        help="Required. Your DriveThruRPG API token",
+        default=environ.get("DRPG_TOKEN"),
+    )
+    parser.add_argument(
+        "--library-path",
+        "-p",
+        default=environ.get("DRPG_LIBRARY_PATH", "repository"),
+        type=Path,
+        help="Path to your downloads. Defaults to './repository'",
+    )
+    parser.add_argument(
+        "--use-checksums",
+        "-c",
+        action="store_true",
+        default=environ.get("DRPG_USE_CHECKSUMS", "false").lower() == "true",
+        help="Calculate checksums for all files. Slower but possibly more precise",
+    )
+    parser.add_argument(
+        "--log-level",
+        default=environ.get("DRPG_LOG_LEVEL", "INFO"),
+        choices=[logging.getLevelName(i) for i in range(10, 60, 10)],
+        help="How verbose the output should be. Defaults to 'INFO'",
+    )
+    global config
+    config = parser.parse_args(args)
+    setup_logger(config.log_level)
+
+
 if __name__ == "__main__":
-    setup_logger()
+    setup()
     with closing(client):
         sync()

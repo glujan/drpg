@@ -16,17 +16,22 @@ pip install -r requirements.txt
 
 1. Go to [your account settings](https://www.drivethrurpg.com/account_edit.php)
    and generate a new application key.
-2. Copy the key and run the script with: `DRPG_TOKEN=<YOUR_TOKEN> python drpg.py `.
+2. Copy the key and run the script: `python drpg.py --token <YOUR_DRPG_TOKEN>`.
 3. Now just sit, relax and wait. Initial synchronization may take a while.  On
    consecutive runs the script will download only changed files.
 
 ## Advanced options
 
-By default the script does not compare files by md5 checksum to save time. You
-can turn it on by setting `DRPG_USE_CHECKSUMS=true`.
+You can change where your files will be downloaded by using `--library-path
+path/to/your/directory`.
 
-You can change a log level by setting `DRPG_LOGLEVEL=<YOUR_LOG_LEVEL>`. Choices
-are DEBUG, INFO, WARNING, FATAL.
+By default the script does not compare files by md5 checksum to save time. You
+can turn it on by using `--use-checksums`.
+
+You can change a log level by using `--log-level=<YOUR_LOG_LEVEL>`. Choices are
+DEBUG, INFO, WARNING, ERROR, CRITICAL.
+
+For more information, run the script with `--help`.
 
 ## Development
 

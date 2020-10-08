@@ -17,6 +17,8 @@ import drpg
 
 
 api_url = str(drpg.client.base_url)
+test_cli_params = "-t private-token --log-level CRITICAL".split()
+drpg.setup(test_cli_params)
 
 PathMock = partial(mock.Mock, spec=Path)
 
@@ -298,3 +300,30 @@ class ProcessItemTest(TestCase):
 
         path.parent.mkdir.assert_called_once_with(parents=True, exist_ok=True)
         path.write_bytes.assert_called_once_with(self.content)
+
+
+class SetupTest(TestCase):
+    @classmethod
+    def tearDownClass(cls):
+        drpg.setup(test_cli_params)
+
+    @mock.patch("drpg.argparse.ArgumentParser.error")
+    def test_has_required_params(self, error_mock):
+        drpg.setup([])
+        error_mock.assert_called_once()
+
+    def test_defaults_from_env(self):
+        env = {
+            "DRPG_TOKEN": "env-token",
+            "DRPG_LIBRARY_PATH": "env/path",
+            "DRPG_LOG_LEVEL": "DEBUG",
+            "DRPG_USE_CHECKSUMS": "true",
+        }
+
+        with mock.patch.dict(drpg.environ, env):
+            drpg.setup([])
+
+        self.assertEqual(drpg.config.token, env["DRPG_TOKEN"])
+        self.assertEqual(drpg.config.library_path, Path(env["DRPG_LIBRARY_PATH"]))
+        self.assertEqual(drpg.config.log_level, env["DRPG_LOG_LEVEL"])
+        self.assertTrue(drpg.config.use_checksums)

@@ -77,7 +77,7 @@ def _get_products_page(func, page, per_page):
     ).json()["message"]
 
 
-def need_download(product, item, precisely=False):
+def need_download(product, item, use_checksums=False):
     path = get_file_path(product, item)
 
     if not path.exists():
@@ -91,7 +91,7 @@ def need_download(product, item, precisely=False):
         return True
 
     if (
-        precisely
+        use_checksums
         and (checksum := get_newest_checksum(item))
         and md5(path.read_bytes()).hexdigest() != checksum
     ):
@@ -156,13 +156,13 @@ def sync():
     login_data = login(environ["DRPG_TOKEN"])
     client.headers["Authorization"] = f"Bearer {login_data['access_token']}"
 
-    precisely = environ.get("DRPG_PRECISELY", "").lower() == "true"
+    use_checksums = environ.get("DRPG_USE_CHECKSUMS", "").lower() == "true"
     products = get_products(login_data["customers_id"], per_page=100)
     items = (
         (product, item)
         for product in products
         for item in product.pop("files")
-        if need_download(product, item, precisely)
+        if need_download(product, item, use_checksums)
     )
 
     with ThreadPool(5) as pool:

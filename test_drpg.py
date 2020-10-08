@@ -174,7 +174,7 @@ class NeedDownloadTest(TestCase):
             item = self.dummy_item(self.old_date)
             product = self.dummy_product(item)
 
-            need = drpg.need_download(product, item, precisely=True)
+            need = drpg.need_download(product, item, use_checksums=True)
             self.assertFalse(need)
 
         with self.subTest("different md5"):
@@ -182,7 +182,7 @@ class NeedDownloadTest(TestCase):
             item["checksums"][0]["checksum"] += "not matching"
             product = self.dummy_product(item)
 
-            need = drpg.need_download(product, item, precisely=True)
+            need = drpg.need_download(product, item, use_checksums=True)
             self.assertTrue(need)
 
         with self.subTest("remote file has no checksum"):
@@ -190,7 +190,7 @@ class NeedDownloadTest(TestCase):
             item["checksums"] = []
             product = self.dummy_product(item)
 
-            need = drpg.need_download(product, item, precisely=True)
+            need = drpg.need_download(product, item, use_checksums=True)
             self.assertFalse(need)
 
     def dummy_item(self, date):

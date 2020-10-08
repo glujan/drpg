@@ -23,7 +23,7 @@ pip install -r requirements.txt
 ## Advanced options
 
 By default the script does not compare files by md5 checksum to save time. You
-can turn it on by setting `DRPG_PRECISELY=true`.
+can turn it on by setting `DRPG_USE_CHECKSUMS=true`.
 
 You can change a log level by setting `DRPG_LOGLEVEL=<YOUR_LOG_LEVEL>`. Choices
 are DEBUG, INFO, WARNING, FATAL.

@@ -11,6 +11,7 @@ import dataclasses
 import re
 import string
 
+from httpx import HTTPError
 import respx
 
 import drpg
@@ -76,6 +77,23 @@ class ProductResponse:
     publishers_name: str
     files: List[FileResponse]
     products_id: str = dataclasses.field(default_factory=random_id)
+
+
+class SuppressErrorsTest(TestCase):
+    def test_logs_error(self):
+        error_classes = [KeyError, ValueError]
+
+        @drpg.suppress_errors(*error_classes)
+        def func_that_raises(error):
+            raise error()
+
+        for error in error_classes:
+            with self.subTest(error=error), mock.patch("drpg.logger") as logger:
+                try:
+                    func_that_raises(error)
+                except error as e:
+                    self.fail(e)
+                logger.exception.assert_called_once()
 
 
 class LoginTest(TestCase):
@@ -300,6 +318,20 @@ class ProcessItemTest(TestCase):
 
         path.parent.mkdir.assert_called_once_with(parents=True, exist_ok=True)
         path.write_bytes.assert_called_once_with(self.content)
+
+    @mock.patch("drpg.get_download_url")
+    def test_error_occurs(self, m_get_download_url):
+        class TestHTTPError(HTTPError):
+            def __init__(self):
+                "Helper error to easier make an instance of HTTPError"
+
+        for error_class in [TestHTTPError, PermissionError]:
+            with self.subTest(error_class=error_class):
+                m_get_download_url.side_effect = error_class
+                try:
+                    drpg.process_item(self.product, self.item)
+                except error_class as e:
+                    self.fail(e)
 
 
 class SyncTest(TestCase):

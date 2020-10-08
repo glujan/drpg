@@ -7,11 +7,12 @@ from os import environ
 from pathlib import Path
 from time import sleep, timezone
 import argparse
+import functools
 import logging
 import re
 import sys
 
-from httpx import Client as HttpClient, codes
+from httpx import Client as HttpClient, HTTPError, codes
 
 
 client = HttpClient(base_url="https://www.drivethrurpg.com")
@@ -19,6 +20,20 @@ config = None
 logger = logging.getLogger("drpg")
 
 checksum_time_format = "%Y-%m-%d %H:%M:%S"
+
+
+def suppress_errors(*errors):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                func(*args, **kwargs)
+            except errors as e:
+                logger.exception(e)
+
+        return wrapper
+
+    return decorator
 
 
 def setup_logger(level_name):
@@ -111,13 +126,15 @@ def get_download_url(product_id, item_id):
     )
 
     while (data := resp.json()["message"])["progress"].startswith("Preparing download"):
-        logger.info("Waiting to download: %s - %s", product_id, item_id)
+        logger.debug("Waiting to download: %s - %s", product_id, item_id)
         sleep(3)
         task_id = data["file_tasks_id"]
         resp = client.get(
             f"/api/v1/file_tasks/{task_id}",
             params={"fields": "download_url,progress,checksums"},
         )
+
+    logger.debug("Got download link for: %s - %s", product_id, item_id)
     return data
 
 
@@ -144,6 +161,7 @@ def get_newest_checksum(item):
     )["checksum"]
 
 
+@suppress_errors(HTTPError, PermissionError)
 def process_item(product, item):
     logger.info("Processing: %s - %s", product["products_name"], item["filename"])
     url_data = get_download_url(product["products_id"], item["bundle_id"])

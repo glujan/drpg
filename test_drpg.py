@@ -302,6 +302,34 @@ class ProcessItemTest(TestCase):
         path.write_bytes.assert_called_once_with(self.content)
 
 
+class SyncTest(TestCase):
+    @mock.patch("drpg.login", return_value={"access_token": "t", "customers_id": "3"})
+    @mock.patch("drpg.need_download", return_value=True)
+    @mock.patch("drpg.get_products")
+    @mock.patch("drpg.process_item")
+    def test_processes_each_item(self, process_item_mock, get_products_mock, *_):
+        files_count = 5
+        products_count = 3
+        get_products_mock.return_value = [
+            self.dummy_product(f"Rule Book {i}", files_count)
+            for i in range(products_count)
+        ]
+        drpg.sync()
+        self.assertEqual(process_item_mock.call_count, files_count * products_count)
+
+    def dummy_product(self, name, files_count):
+        return dataclasses.asdict(
+            ProductResponse(
+                name,
+                "Test Publishing",
+                files=[
+                    FileResponse(f"file{i}.pdf", datetime.now().isoformat(), [])
+                    for i in range(files_count)
+                ],
+            )
+        )
+
+
 class SetupTest(TestCase):
     @classmethod
     def tearDownClass(cls):

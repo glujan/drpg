@@ -17,9 +17,8 @@ import respx
 import drpg
 
 
-api_url = str(drpg.client.base_url)
+api_url = drpg.DrpgApi.API_URL
 test_cli_params = "-t private-token --log-level CRITICAL".split()
-drpg.setup(test_cli_params)
 
 PathMock = partial(mock.Mock, spec=Path)
 
@@ -96,16 +95,17 @@ class SuppressErrorsTest(TestCase):
                 logger.exception.assert_called_once()
 
 
-class LoginTest(TestCase):
+class DrpgApiTokenTest(TestCase):
     def setUp(self):
         self.login_url = "/api/v1/token?fields=customers_id"
+        self.client = drpg.DrpgApi("token")
 
     @respx.mock(base_url=api_url)
     def test_login_valid_token(self, respx_mock):
         content = {"message": {"access_token": "some-token", "customers_id": "123"}}
         respx_mock.post(self.login_url, content=content, status_code=201)
 
-        login_data = drpg.login("token")
+        login_data = self.client.token()
         self.assertEqual(login_data, content["message"])
 
     @respx.mock(base_url=api_url)
@@ -113,14 +113,16 @@ class LoginTest(TestCase):
         respx_mock.post(self.login_url, status_code=401)
 
         with self.assertRaises(AttributeError):
-            drpg.login("token")
+            self.client.token()
 
 
-class GetProductsTest(TestCase):
+class DrpgApiCustomerProductsTest(TestCase):
     def setUp(self):
-        self.customer_id = "123"
-        url = f"/api/v1/customers/{self.customer_id}/products"
+        customer_id = "123"
+        url = f"/api/v1/customers/{customer_id}/products"
         self.products_page = re.compile(f"{url}\\?.+$")
+        self.client = drpg.DrpgApi("token")
+        self.client._customer_id = customer_id
 
     @respx.mock(base_url=api_url)
     def test_one_page(self, respx_mock):
@@ -128,7 +130,7 @@ class GetProductsTest(TestCase):
         respx_mock.get(self.products_page, content={"message": page_1_products})
         respx_mock.get(self.products_page, content={"message": []})
 
-        products = drpg.get_products(self.customer_id)
+        products = self.client.customer_products()
         self.assertEqual(list(products), page_1_products)
 
     @respx.mock(base_url=api_url)
@@ -139,11 +141,40 @@ class GetProductsTest(TestCase):
         respx_mock.get(self.products_page, content={"message": page_2_products})
         respx_mock.get(self.products_page, content={"message": []})
 
-        products = drpg.get_products(self.customer_id)
+        products = self.client.customer_products()
         self.assertEqual(list(products), page_1_products + page_2_products)
 
 
-class NeedDownloadTest(TestCase):
+class DrpgApiFileTaskTest(TestCase):
+    def setUp(self):
+        file_task_id = 123
+        params = urlencode({"fields": "download_url,progress"})
+        self.file_task_url = f"/api/v1/file_tasks/{file_task_id}?{params}"
+        self.file_tasks_url = f"/api/v1/file_tasks?{params}"
+
+        self.response_preparing = {"message": FileTaskResponse.preparing(file_task_id)}
+        self.response_ready = {"message": FileTaskResponse.complete(file_task_id)}
+
+        self.client = drpg.DrpgApi("token")
+
+    @respx.mock(base_url=api_url)
+    def test_immiediate_download_url(self, respx_mock):
+        respx_mock.post(self.file_tasks_url, content=self.response_ready)
+
+        file_data = self.client.file_task("product_id", "item_id")
+        self.assertEqual(file_data, self.response_ready["message"])
+
+    @mock.patch("drpg.sleep")
+    @respx.mock(base_url=api_url)
+    def test_wait_for_download_url(self, _, respx_mock):
+        respx_mock.post(self.file_tasks_url, content=self.response_preparing)
+        respx_mock.get(self.file_task_url, content=self.response_ready)
+
+        file_data = self.client.file_task("product_id", "item_id")
+        self.assertEqual(file_data, self.response_ready["message"])
+
+
+class DrpgSyncNeedDownloadTest(TestCase):
     new_date = datetime.now()
     old_date = new_date - timedelta(days=100)
     file_content = b"some file content"
@@ -164,37 +195,40 @@ class NeedDownloadTest(TestCase):
         "stat.return_value": mock.Mock(spec=stat_result, st_mtime=new_date.timestamp()),
     }
 
-    @mock.patch("drpg.get_file_path", return_value=PathMock(**no_file_kwargs))
+    def setUp(self):
+        self.sync = drpg.DrpgSync(drpg._setup(test_cli_params))
+
+    @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock(**no_file_kwargs))
     def test_no_local_file(self, _):
         item = self.dummy_item(self.old_date)
         product = self.dummy_product(item)
 
-        need = drpg.need_download(product, item)
+        need = self.sync._need_download(product, item)
         self.assertTrue(need)
 
-    @mock.patch("drpg.get_file_path", return_value=PathMock(**old_file_kwargs))
+    @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock(**old_file_kwargs))
     def test_local_last_modified_older(self, _):
         item = self.dummy_item(self.new_date)
         product = self.dummy_product(item)
 
-        need = drpg.need_download(product, item)
+        need = self.sync._need_download(product, item)
         self.assertTrue(need)
 
-    @mock.patch("drpg.get_file_path", return_value=PathMock(**new_file_kwargs))
+    @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock(**new_file_kwargs))
     def test_local_last_modified_newer(self, _):
         item = self.dummy_item(self.old_date)
         product = self.dummy_product(item)
 
-        need = drpg.need_download(product, item)
+        need = self.sync._need_download(product, item)
         self.assertFalse(need)
 
-    @mock.patch("drpg.get_file_path", return_value=PathMock(**new_file_kwargs))
+    @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock(**new_file_kwargs))
     def test_md5_check(self, _):
         with self.subTest("same md5"):
             item = self.dummy_item(self.old_date)
             product = self.dummy_product(item)
 
-            need = drpg.need_download(product, item, use_checksums=True)
+            need = self.sync._need_download(product, item, use_checksums=True)
             self.assertFalse(need)
 
         with self.subTest("different md5"):
@@ -202,7 +236,7 @@ class NeedDownloadTest(TestCase):
             item["checksums"][0]["checksum"] += "not matching"
             product = self.dummy_product(item)
 
-            need = drpg.need_download(product, item, use_checksums=True)
+            need = self.sync._need_download(product, item, use_checksums=True)
             self.assertTrue(need)
 
         with self.subTest("remote file has no checksum"):
@@ -210,7 +244,7 @@ class NeedDownloadTest(TestCase):
             item["checksums"] = []
             product = self.dummy_product(item)
 
-            need = drpg.need_download(product, item, use_checksums=True)
+            need = self.sync._need_download(product, item, use_checksums=True)
             self.assertFalse(need)
 
     def dummy_item(self, date):
@@ -225,34 +259,10 @@ class NeedDownloadTest(TestCase):
         )
 
 
-class GetDownloadUrlTest(TestCase):
+class DrpgSyncFilePathTest(TestCase):
     def setUp(self):
-        file_task_id = 123
-        params = urlencode({"fields": "download_url,progress,checksums"})
-        self.file_task_url = f"/api/v1/file_tasks/{file_task_id}?{params}"
-        self.file_tasks_url = f"/api/v1/file_tasks?{params}"
+        self.sync = drpg.DrpgSync(drpg._setup(test_cli_params))
 
-        self.response_preparing = {"message": FileTaskResponse.preparing(file_task_id)}
-        self.response_ready = {"message": FileTaskResponse.complete(file_task_id)}
-
-    @respx.mock(base_url=api_url)
-    def test_immiediate_download_url(self, respx_mock):
-        respx_mock.post(self.file_tasks_url, content=self.response_ready)
-
-        file_data = drpg.get_download_url("product_id", "item_id")
-        self.assertEqual(file_data, self.response_ready["message"])
-
-    @mock.patch("drpg.sleep")
-    @respx.mock(base_url=api_url)
-    def test_wait_for_download_url(self, _, respx_mock):
-        respx_mock.post(self.file_tasks_url, content=self.response_preparing)
-        respx_mock.get(self.file_task_url, content=self.response_ready)
-
-        file_data = drpg.get_download_url("product_id", "item_id")
-        self.assertEqual(file_data, self.response_ready["message"])
-
-
-class GetFilePathTest(TestCase):
     def test_product_starts_with_slash(self):
         product = {
             "publishers_name": "/Slash Publishing",
@@ -260,11 +270,84 @@ class GetFilePathTest(TestCase):
         }
         item = {"filename": "filename.pdf"}
 
-        path = drpg.get_file_path(product, item)
+        path = self.sync._file_path(product, item)
         try:
             path.relative_to("repository/Slash Publishing/")
         except ValueError as e:
             self.fail(e)
+
+
+class DrpgSyncProcessItemTest(TestCase):
+    file_task = FileTaskResponse.complete("123")
+    content = b"content"
+
+    def setUp(self):
+        item = FileResponse("file.pdf", datetime.now().isoformat(), [_Checksum("md5")])
+        self.item = dataclasses.asdict(item)
+        self.product = dataclasses.asdict(
+            ProductResponse("Test rule book", "Test Publishing", files=[item])
+        )
+        self.sync = drpg.DrpgSync(drpg._setup(test_cli_params))
+
+    @respx.mock(base_url=api_url)
+    @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock())
+    @mock.patch("drpg.DrpgApi.file_task", return_value=file_task)
+    def test_writes_to_file(self, _, m_file_path, respx_mock):
+        respx_mock.get(self.file_task["download_url"], content=self.content)
+
+        path = m_file_path.return_value
+        type(path).parent = mock.PropertyMock(return_value=PathMock())
+
+        self.sync._process_item(self.product, self.item)
+
+        path.parent.mkdir.assert_called_once_with(parents=True, exist_ok=True)
+        path.write_bytes.assert_called_once_with(self.content)
+
+    @mock.patch("drpg.logger")
+    @mock.patch("drpg.DrpgApi.file_task")
+    def test_error_occurs(self, m_file_task, _):
+        class TestHTTPError(HTTPError):
+            def __init__(self):
+                "Helper error to easier make an instance of HTTPError"
+
+        for error_class in [TestHTTPError, PermissionError]:
+            with self.subTest(error_class=error_class):
+                m_file_task.side_effect = error_class
+                try:
+                    self.sync._process_item(self.product, self.item)
+                except error_class as e:
+                    self.fail(e)
+
+
+class DrpgSyncTest(TestCase):
+    def setUp(self):
+        self.sync = drpg.DrpgSync(drpg._setup(test_cli_params))
+
+    @mock.patch("drpg.DrpgApi.token", return_value={"access_token": "t"})
+    @mock.patch("drpg.DrpgSync._need_download", return_value=True)
+    @mock.patch("drpg.DrpgApi.customer_products")
+    @mock.patch("drpg.DrpgSync._process_item")
+    def test_processes_each_item(self, process_item_mock, customer_products_mock, *_):
+        files_count = 5
+        products_count = 3
+        customer_products_mock.return_value = [
+            self.dummy_product(f"Rule Book {i}", files_count)
+            for i in range(products_count)
+        ]
+        self.sync.sync()
+        self.assertEqual(process_item_mock.call_count, files_count * products_count)
+
+    def dummy_product(self, name, files_count):
+        return dataclasses.asdict(
+            ProductResponse(
+                name,
+                "Test Publishing",
+                files=[
+                    FileResponse(f"file{i}.pdf", datetime.now().isoformat(), [])
+                    for i in range(files_count)
+                ],
+            )
+        )
 
 
 class EscapePathTest(TestCase):
@@ -288,88 +371,16 @@ class EscapePathTest(TestCase):
         self.assertEqual(drpg._escape_path_part(name), "some - name")
 
 
-class GetNewestChecksumTest(TestCase):
+class NewestChecksumTest(TestCase):
     def test_no_checksums(self):
-        checksum = drpg.get_newest_checksum({"checksums": []})
+        checksum = drpg.newest_checksum({"checksums": []})
         self.assertIsNone(checksum)
 
 
-class ProcessItemTest(TestCase):
-    file_task = FileTaskResponse.complete("123")
-    content = b"content"
-
-    def setUp(self):
-        item = FileResponse("file.pdf", datetime.now().isoformat(), [_Checksum("md5")])
-        self.item = dataclasses.asdict(item)
-        self.product = dataclasses.asdict(
-            ProductResponse("Test rule book", "Test Publishing", files=[item])
-        )
-
-    @respx.mock(base_url=api_url)
-    @mock.patch("drpg.get_file_path", return_value=PathMock())
-    @mock.patch("drpg.get_download_url", return_value=file_task)
-    def test_writes_to_file(self, _, m_get_file_path, respx_mock):
-        respx_mock.get(self.file_task["download_url"], content=self.content)
-
-        path = m_get_file_path.return_value
-        type(path).parent = mock.PropertyMock(return_value=PathMock())
-
-        drpg.process_item(self.product, self.item)
-
-        path.parent.mkdir.assert_called_once_with(parents=True, exist_ok=True)
-        path.write_bytes.assert_called_once_with(self.content)
-
-    @mock.patch("drpg.get_download_url")
-    def test_error_occurs(self, m_get_download_url):
-        class TestHTTPError(HTTPError):
-            def __init__(self):
-                "Helper error to easier make an instance of HTTPError"
-
-        for error_class in [TestHTTPError, PermissionError]:
-            with self.subTest(error_class=error_class):
-                m_get_download_url.side_effect = error_class
-                try:
-                    drpg.process_item(self.product, self.item)
-                except error_class as e:
-                    self.fail(e)
-
-
-class SyncTest(TestCase):
-    @mock.patch("drpg.login", return_value={"access_token": "t", "customers_id": "3"})
-    @mock.patch("drpg.need_download", return_value=True)
-    @mock.patch("drpg.get_products")
-    @mock.patch("drpg.process_item")
-    def test_processes_each_item(self, process_item_mock, get_products_mock, *_):
-        files_count = 5
-        products_count = 3
-        get_products_mock.return_value = [
-            self.dummy_product(f"Rule Book {i}", files_count)
-            for i in range(products_count)
-        ]
-        drpg.sync()
-        self.assertEqual(process_item_mock.call_count, files_count * products_count)
-
-    def dummy_product(self, name, files_count):
-        return dataclasses.asdict(
-            ProductResponse(
-                name,
-                "Test Publishing",
-                files=[
-                    FileResponse(f"file{i}.pdf", datetime.now().isoformat(), [])
-                    for i in range(files_count)
-                ],
-            )
-        )
-
-
 class SetupTest(TestCase):
-    @classmethod
-    def tearDownClass(cls):
-        drpg.setup(test_cli_params)
-
     @mock.patch("drpg.argparse.ArgumentParser.error")
     def test_has_required_params(self, error_mock):
-        drpg.setup([])
+        drpg._setup([])
         error_mock.assert_called_once()
 
     def test_defaults_from_env(self):
@@ -381,9 +392,9 @@ class SetupTest(TestCase):
         }
 
         with mock.patch.dict(drpg.environ, env):
-            drpg.setup([])
+            config = drpg._setup([])
 
-        self.assertEqual(drpg.config.token, env["DRPG_TOKEN"])
-        self.assertEqual(drpg.config.library_path, Path(env["DRPG_LIBRARY_PATH"]))
-        self.assertEqual(drpg.config.log_level, env["DRPG_LOG_LEVEL"])
-        self.assertTrue(drpg.config.use_checksums)
+        self.assertEqual(config.token, env["DRPG_TOKEN"])
+        self.assertEqual(config.library_path, Path(env["DRPG_LIBRARY_PATH"]))
+        self.assertEqual(config.log_level, env["DRPG_LOG_LEVEL"])
+        self.assertTrue(config.use_checksums)

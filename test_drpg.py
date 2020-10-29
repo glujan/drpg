@@ -1,9 +1,11 @@
 from datetime import datetime, timedelta
 from functools import partial
 from hashlib import md5
+from inspect import currentframe
 from os import stat_result
 from pathlib import Path
 from random import randint
+from signal import SIGTERM
 from typing import List, Optional
 from unittest import TestCase, mock
 from urllib.parse import urlencode
@@ -398,3 +400,10 @@ class SetupTest(TestCase):
         self.assertEqual(config.library_path, Path(env["DRPG_LIBRARY_PATH"]))
         self.assertEqual(config.log_level, env["DRPG_LOG_LEVEL"])
         self.assertTrue(config.use_checksums)
+
+
+class SignalHandlerTest(TestCase):
+    @mock.patch("drpg.sys.exit")
+    def test_exits(self, m_exit):
+        drpg.signal_handler(SIGTERM, currentframe())
+        m_exit.assert_called_once_with(0)

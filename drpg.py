@@ -9,6 +9,7 @@ import argparse
 import functools
 import logging
 import re
+import signal
 import sys
 
 import httpx
@@ -258,7 +259,13 @@ def _setup_logger(level_name):
     logger.setLevel(level)
 
 
+def signal_handler(sig, frame):
+    logger.info("Stopping...")
+    sys.exit(0)
+
+
 if __name__ == "__main__":
+    signal.signal(signal.SIGINT, signal_handler)
     config = _setup()
     _setup_logger(config.log_level)
     DrpgSync(config).sync()

@@ -1,3 +1,4 @@
+.coverage
 .python-version
 __pycache__
 /build

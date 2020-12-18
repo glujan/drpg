@@ -1,4 +1,5 @@
 # dRPG downloads and keeps your purchases from DriveThruRPG up to date
+[![Maintainability](https://api.codeclimate.com/v1/badges/b3128ba6938f92088135/maintainability)](https://codeclimate.com/github/glujan/drpg/maintainability)
 
 ## Prerequisites
 

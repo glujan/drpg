@@ -45,7 +45,7 @@ with `unittest`:
 
 ```bash
 pip install -r requirements.dev.txt
-python -m unittest
+python -m unittest discover
 ```
 
 ### Building a binary distribution

@@ -32,7 +32,7 @@ jobs:
     - name: Test with unittest
       run: |
         coverage erase
-        coverage run -m unittest
+        coverage run -m unittest discover
     - name: Check coverage
       run: |
         coverage report --show-missing --fail-under=90

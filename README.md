@@ -17,7 +17,7 @@ pip install -r requirements.txt
 
 1. Go to [your account settings](https://www.drivethrurpg.com/account_edit.php)
    and generate a new application key.
-2. Copy the key and run the script: `python drpg.py --token <YOUR_DRPG_TOKEN>`.
+2. Copy the key and run the script: `python -m drpg --token <YOUR_DRPG_TOKEN>`.
 3. Now just sit, relax and wait. Initial synchronization may take a while.  On
    consecutive runs the script will download only changed files.
 

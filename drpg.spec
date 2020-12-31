@@ -3,7 +3,7 @@
 block_cipher = None
 
 
-a = Analysis(['drpg.py'],
+a = Analysis(['drpg/__main__.py'],
              pathex=['.'],
              binaries=[],
              datas=[],

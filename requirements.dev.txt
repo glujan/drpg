@@ -16,7 +16,7 @@ mccabe==0.6.1             # via flake8
 pycodestyle==2.6.0        # via flake8
 pyflakes==2.2.0           # via flake8
 pyinstaller==3.6          # via -r requirements.dev.in
-respx==0.14.0             # via -r requirements.dev.in
+respx==0.16.3             # via -r requirements.dev.in
 rfc3986[idna2008]==1.4.0  # via -r requirements.txt, httpx
 sniffio==1.2.0            # via -r requirements.txt, httpcore, httpx
 

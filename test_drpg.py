@@ -13,7 +13,7 @@ import dataclasses
 import re
 import string
 
-from httpx import HTTPError
+from httpx import HTTPError, Response
 import respx
 
 import drpg
@@ -108,14 +108,14 @@ class DrpgApiTokenTest(TestCase):
     @respx.mock(base_url=api_url)
     def test_login_valid_token(self, respx_mock):
         content = {"message": {"access_token": "some-token", "customers_id": "123"}}
-        respx_mock.post(self.login_url, content=content, status_code=201)
+        respx_mock.post(self.login_url).respond(201, json=content)
 
         login_data = self.client.token()
         self.assertEqual(login_data, content["message"])
 
     @respx.mock(base_url=api_url)
     def test_login_invalid_token(self, respx_mock):
-        respx_mock.post(self.login_url, status_code=401)
+        respx_mock.post(self.login_url).respond(401)
 
         with self.assertRaises(AttributeError):
             self.client.token()
@@ -132,8 +132,12 @@ class DrpgApiCustomerProductsTest(TestCase):
     @respx.mock(base_url=api_url)
     def test_one_page(self, respx_mock):
         page_1_products = [{"name": "First Product"}]
-        respx_mock.get(self.products_page, content={"message": page_1_products})
-        respx_mock.get(self.products_page, content={"message": []})
+        respx_mock.get(self.products_page).mock(
+            side_effect=[
+                Response(200, json={"message": page_1_products}),
+                Response(200, json={"message": []}),
+            ]
+        )
 
         products = self.client.customer_products()
         self.assertEqual(list(products), page_1_products)
@@ -142,10 +146,13 @@ class DrpgApiCustomerProductsTest(TestCase):
     def test_multiple_pages(self, respx_mock):
         page_1_products = [{"name": "First Product"}]
         page_2_products = [{"name": "Second Product"}]
-        respx_mock.get(self.products_page, content={"message": page_1_products})
-        respx_mock.get(self.products_page, content={"message": page_2_products})
-        respx_mock.get(self.products_page, content={"message": []})
-
+        respx_mock.get(self.products_page).mock(
+            side_effect=[
+                Response(200, json={"message": page_1_products}),
+                Response(200, json={"message": page_2_products}),
+                Response(200, json={"message": []}),
+            ]
+        )
         products = self.client.customer_products()
         self.assertEqual(list(products), page_1_products + page_2_products)
 
@@ -164,7 +171,7 @@ class DrpgApiFileTaskTest(TestCase):
 
     @respx.mock(base_url=api_url)
     def test_immiediate_download_url(self, respx_mock):
-        respx_mock.post(self.file_tasks_url, content=self.response_ready)
+        respx_mock.post(self.file_tasks_url).respond(201, json=self.response_ready)
 
         file_data = self.client.file_task("product_id", "item_id")
         self.assertEqual(file_data, self.response_ready["message"])
@@ -172,8 +179,8 @@ class DrpgApiFileTaskTest(TestCase):
     @mock.patch("drpg.api.sleep")
     @respx.mock(base_url=api_url)
     def test_wait_for_download_url(self, _, respx_mock):
-        respx_mock.post(self.file_tasks_url, content=self.response_preparing)
-        respx_mock.get(self.file_task_url, content=self.response_ready)
+        respx_mock.post(self.file_tasks_url).respond(201, json=self.response_preparing)
+        respx_mock.get(self.file_task_url).respond(200, json=self.response_ready)
 
         file_data = self.client.file_task("product_id", "item_id")
         self.assertEqual(file_data, self.response_ready["message"])
@@ -294,11 +301,13 @@ class DrpgSyncProcessItemTest(TestCase):
         )
         self.sync = drpg.DrpgSync(drpg.cmd._parse_cli(test_cli_params))
 
-    @respx.mock(base_url=api_url)
     @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock())
     @mock.patch("drpg.api.DrpgApi.file_task", return_value=file_task)
+    @respx.mock(base_url=api_url)
     def test_writes_to_file(self, _, m_file_path, respx_mock):
-        respx_mock.get(self.file_task["download_url"], content=self.content)
+        respx_mock.get(self.file_task["download_url"]).respond(
+            200, content=self.content
+        )
 
         path = m_file_path.return_value
         type(path).parent = mock.PropertyMock(return_value=PathMock())

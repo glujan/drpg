@@ -3,6 +3,7 @@
 __pycache__
 /build
 /dist
+/drpg.egg-info/
 /venv
 
 repository/

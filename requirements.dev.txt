@@ -4,23 +4,62 @@
 #
 #    pip-compile --output-file=requirements.dev.txt requirements.dev.in
 #
-altgraph==0.17            # via macholib, pyinstaller
-certifi==2020.12.5        # via -r requirements.txt, httpx
-coverage==5.3.1           # via -r requirements.dev.in
-flake8==3.8.4             # via -r requirements.dev.in
-h11==0.11.0               # via -r requirements.txt, httpcore
-httpcore==0.12.2          # via -r requirements.txt, httpx
-httpx==0.16.1             # via -r requirements.txt, respx
-idna==2.10                # via -r requirements.txt, rfc3986
-macholib==1.14            # via pyinstaller
-mccabe==0.6.1             # via flake8
-pycodestyle==2.6.0        # via flake8
-pyflakes==2.2.0           # via flake8
-pyinstaller-hooks-contrib==2020.11  # via pyinstaller
-pyinstaller==4.1          # via -r requirements.dev.in
-respx==0.16.3             # via -r requirements.dev.in
-rfc3986[idna2008]==1.4.0  # via -r requirements.txt, httpx
-sniffio==1.2.0            # via -r requirements.txt, httpcore, httpx
+altgraph==0.17
+    # via
+    #   macholib
+    #   pyinstaller
+certifi==2020.12.5
+    # via
+    #   -r requirements.txt
+    #   httpx
+click==7.1.2
+    # via pip-tools
+coverage==5.3.1
+    # via -r requirements.dev.in
+flake8==3.8.4
+    # via -r requirements.dev.in
+h11==0.11.0
+    # via
+    #   -r requirements.txt
+    #   httpcore
+httpcore==0.12.2
+    # via
+    #   -r requirements.txt
+    #   httpx
+httpx==0.16.1
+    # via
+    #   -r requirements.txt
+    #   respx
+idna==2.10
+    # via
+    #   -r requirements.txt
+    #   rfc3986
+macholib==1.14
+    # via pyinstaller
+mccabe==0.6.1
+    # via flake8
+pip-tools==5.5.0
+    # via -r requirements.dev.in
+pycodestyle==2.6.0
+    # via flake8
+pyflakes==2.2.0
+    # via flake8
+pyinstaller-hooks-contrib==2020.11
+    # via pyinstaller
+pyinstaller==4.1
+    # via -r requirements.dev.in
+respx==0.16.3
+    # via -r requirements.dev.in
+rfc3986[idna2008]==1.4.0
+    # via
+    #   -r requirements.txt
+    #   httpx
+sniffio==1.2.0
+    # via
+    #   -r requirements.txt
+    #   httpcore
+    #   httpx
 
 # The following packages are considered to be unsafe in a requirements file:
+# pip
 # setuptools

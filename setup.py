@@ -8,7 +8,7 @@ with open("requirements.in", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="drpg",
-    version="0.0.6",
+    version="0.0.7",
     author="Grzegorz Janik",
     description="Download and keep up to date your purchases from DriveThruRPG",
     long_description=long_description,

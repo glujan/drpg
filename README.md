@@ -3,7 +3,7 @@
 
 ## Installation
 
-This script is tested with and requires Python 3.8.
+This script is tested with Python 3.8 and requires Python 3.8 or newer to run.
 
 You can install dRPG from PyPI:
 ```bash
@@ -11,23 +11,15 @@ pip install --user drpg
 drpg --help  # or python -m drpg --help
 ```
 
-Alternatively, you can checkout a repository, install dependencies from
-`requirements.txt` and run it using:
-
-```bash
-python3.8 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python -m drpg
-```
-
 ## Usage
 
 1. Go to [your account settings](https://www.drivethrurpg.com/account_edit.php)
    and generate a new application key.
 2. Copy the key and run the script: `drpg --token <YOUR_DRPG_TOKEN>`.
-3. Now just sit, relax and wait. Initial synchronization may take a while.  On
-   consecutive runs the script will download only changed files.
+3. Now just sit, relax and wait. Initial synchronization may take a while so
+   why don't you grab a cup of tea or whatever your favourite beverage is. On
+   consecutive runs the script will download only new and changed files which
+   will be a way faster.
 
 ### Advanced options
 
@@ -42,38 +34,8 @@ DEBUG, INFO, WARNING, ERROR, CRITICAL.
 
 For more information, run the script with `--help`.
 
-## Development
 
-Pull requests and bug reports are welcomed!
+## Found a bug?
 
-### Running tests
-
-To run tests, install dependencies from `requirements.dev.txt` and run tests
-with `unittest`:
-
-```bash
-pip install -r requirements.dev.txt
-python -m unittest discover
-```
-
-### Building a wheel
-
-The project is using setuptools. To generate a wheel package run:
-
-```bash
-python3 setup.py bdist_wheel
-```
-
-The wheel package will be saved in a `dist/` directory.
-
-### Building a binary distribution
-
-Stand-alone executables are generated using PyInstaller. To generate a binary
-for your platform install dev requirements and run PyInstaller:
-
-```bash
-pip install -r requirements.dev.txt
-pyinstaller drpg.spec
-```
-
-The binary will be saved in a `dist/` directory.
+Pull requests and bug reports are welcomed! See [CONTRIBUTING.md](CONTRIBUTING.md)
+for more details.

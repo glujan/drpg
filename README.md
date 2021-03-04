@@ -34,6 +34,16 @@ DEBUG, INFO, WARNING, ERROR, CRITICAL.
 
 For more information, run the script with `--help`.
 
+## Roadmap
+
+- [x] Have a working scipt
+- [x] Allow to choose where to sync purchased products
+- [x] Allow for fast - based on modification timestamps - or strict - based on both modification timestamps and md5 checksums - comparison of synced and remote files
+- [ ] Publish a stable release
+  - [ ] Compatible with [DriveThruRPG Library App](https://www.drivethrurpg.com/library_client.php) v. 3.0.1.3
+  - [ ] Document which official client version is the script compatible with
+  - [ ] Decide on a versioning scheme - currently I'm considering using a [CalVer](https://calver.org/) with a version number matching the official client release date. For example version 2021.1.5 would be compatible with DriveThruRPG Library App v. 3.0.1.3 which was released on January 5, 2021 (see its [changelog](https://www.drivethrurpg.com/library_client.php#changelog-mac) for release dates)
+
 
 ## Found a bug?
 

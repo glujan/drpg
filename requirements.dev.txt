@@ -8,6 +8,8 @@ altgraph==0.17
     # via
     #   macholib
     #   pyinstaller
+appdirs==1.4.4
+    # via virtualenv
 certifi==2020.12.5
     # via
     #   -r requirements.txt
@@ -16,9 +18,15 @@ click==7.1.2
     # via pip-tools
 coverage==5.3.1
     # via -r requirements.dev.in
+distlib==0.3.1
+    # via virtualenv
+filelock==3.0.12
+    # via
+    #   tox
+    #   virtualenv
 flake8==3.8.4
     # via -r requirements.dev.in
-h11==0.11.0
+h11==0.12.0
     # via
     #   -r requirements.txt
     #   httpcore
@@ -30,7 +38,7 @@ httpx==0.16.1
     # via
     #   -r requirements.txt
     #   respx
-idna==2.10
+idna==3.1
     # via
     #   -r requirements.txt
     #   rfc3986
@@ -38,8 +46,14 @@ macholib==1.14
     # via pyinstaller
 mccabe==0.6.1
     # via flake8
+packaging==20.9
+    # via tox
 pip-tools==5.5.0
     # via -r requirements.dev.in
+pluggy==0.13.1
+    # via tox
+py==1.10.0
+    # via tox
 pycodestyle==2.6.0
     # via flake8
 pyflakes==2.2.0
@@ -48,17 +62,29 @@ pyinstaller-hooks-contrib==2020.11
     # via pyinstaller
 pyinstaller==4.1
     # via -r requirements.dev.in
+pyparsing==2.4.7
+    # via packaging
 respx==0.16.3
     # via -r requirements.dev.in
 rfc3986[idna2008]==1.4.0
     # via
     #   -r requirements.txt
     #   httpx
+six==1.15.0
+    # via
+    #   tox
+    #   virtualenv
 sniffio==1.2.0
     # via
     #   -r requirements.txt
     #   httpcore
     #   httpx
+toml==0.10.2
+    # via tox
+tox==3.23.0
+    # via -r requirements.dev.in
+virtualenv==20.4.3
+    # via tox
 
 # The following packages are considered to be unsafe in a requirements file:
 # pip

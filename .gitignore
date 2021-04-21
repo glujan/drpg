@@ -1,5 +1,6 @@
 .coverage
 .python-version
+.tox
 __pycache__
 /build
 /dist

@@ -4,3 +4,4 @@ flake8
 pyinstaller
 respx
 pip-tools>=5.5.0
+tox

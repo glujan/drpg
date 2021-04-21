@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8]
+        python-version: [3.8, 3.9]
 
     steps:
     - uses: actions/checkout@v2
@@ -29,10 +29,13 @@ jobs:
     - name: Lint with flake8
       run: |
         flake8 . --count --show-source
-    - name: Test with unittest
+    - name: Test pinned deps with unittest
       run: |
         coverage erase
         coverage run -m unittest discover
     - name: Check coverage
       run: |
         coverage report --show-missing --fail-under=90
+    - name: Test with dependency matrix
+      run: |
+       tox

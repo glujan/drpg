@@ -1,8 +1,38 @@
+from __future__ import annotations
+
 import logging
-from functools import partial
 from time import sleep
+from typing import TYPE_CHECKING
 
 import httpx
+
+if TYPE_CHECKING:
+    from typing import Iterator, List, TypedDict
+
+    class TokenResponse(TypedDict):
+        customers_id: str
+
+    class FileTasksResponse(TypedDict):
+        file_tasks_id: str
+        message: str
+        download_url: str
+
+    class Product(TypedDict):
+        products_id: str
+        publishers_name: str
+        products_name: str
+        files: List[DownloadItem]
+
+    class DownloadItem(TypedDict):
+        filename: str
+        last_modified: str
+        bundle_id: str
+        checksums: List[Checksum]
+
+    class Checksum(TypedDict):
+        checksum: str
+        checksum_date: str
+
 
 logger = logging.getLogger("drpg")
 
@@ -12,12 +42,12 @@ class DrpgApi:
 
     API_URL = "https://www.drivethrurpg.com"
 
-    def __init__(self, api_key):
+    def __init__(self, api_key: str):
         self._client = httpx.Client(base_url=self.API_URL)
         self._api_key = api_key
         self._customer_id = None
 
-    def token(self):
+    def token(self) -> TokenResponse:
         """
         Update access token and customer's details based on an API key.
 
@@ -37,22 +67,17 @@ class DrpgApi:
         self._client.headers["Authorization"] = f"Bearer {login_data['access_token']}"
         return login_data
 
-    def customer_products(self, per_page=100):
+    def customer_products(self, per_page: int = 100) -> Iterator[Product]:
         """List all not archived customer's products."""
 
-        product_page = partial(
-            self._client.get,
-            f"/api/v1/customers/{self._customer_id}/products",
-            headers={"Content-Type": "application/json"},
-        )
         page = 1
 
-        while result := self._product_page(product_page, page, per_page):
+        while result := self._product_page(page, per_page):
             logger.debug("Yielding products page %d", page)
             yield from result
             page += 1
 
-    def file_task(self, product_id, item_id):
+    def file_task(self, product_id: str, item_id: str) -> FileTasksResponse:
         """
         Generate a download link and metadata for a product's item.
 
@@ -75,7 +100,7 @@ class DrpgApi:
         logger.debug("Got download link for: %s - %s", product_id, item_id)
         return data
 
-    def _product_page(self, func, page, per_page):
+    def _product_page(self, page: int, per_page: int) -> List[Product]:
         """
         List products from a specified page.
 
@@ -87,7 +112,9 @@ class DrpgApi:
             filters.filters_name, filters.filters_id, filters.parent_id
         """
 
-        return func(
+        return self._client.get(
+            f"/api/v1/customers/{self._customer_id}/products",
+            headers={"Content-Type": "application/json"},
             params={
                 "page": page,
                 "per_page": per_page,

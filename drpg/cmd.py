@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import configparser
 import logging
@@ -7,20 +9,28 @@ import signal
 import sys
 from os import environ
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from drpg import DrpgSync
+from drpg.config import Config
+
+if TYPE_CHECKING:
+    from typing import List, Optional, TypeVar
+
+    CliArgs = List[str]
+    Frame = TypeVar("Frame")
 
 __all__ = ["run"]
 
 
-def run():
+def run() -> None:
     signal.signal(signal.SIGINT, _handle_signal)
     config = _parse_cli()
     _setup_logger(config.log_level)
     DrpgSync(config).sync()
 
 
-def _parse_cli(args=None):
+def _parse_cli(args: Optional[CliArgs] = None) -> Config:
     parser = argparse.ArgumentParser(
         prog="drpg",
         description="Download and keep up to date your purchases from DriveThruRPG",
@@ -58,10 +68,10 @@ def _parse_cli(args=None):
         help="How verbose the output should be. Defaults to 'INFO'",
     )
 
-    return parser.parse_args(args)
+    return parser.parse_args(args, namespace=Config())
 
 
-def _default_dir():
+def _default_dir() -> Path:
     os_name = platform.system()
     if os_name == "Linux":
         xdg_config = Path(environ.get("XDG_CONFIG_HOME", "~/.config")).expanduser()
@@ -70,11 +80,11 @@ def _default_dir():
                 raw_config = "[xdg]\n" + f.read().replace('"', "")
             config = configparser.ConfigParser()
             config.read_string(raw_config)
-            dir = config["xdg"]["xdg_documents_dir"]
+            raw_dir = config["xdg"]["xdg_documents_dir"]
         except (FileNotFoundError, KeyError):
-            dir = "$HOME/Documents"
+            raw_dir = "$HOME/Documents"
         finally:
-            dir = Path(os.path.expandvars(dir))
+            dir = Path(os.path.expandvars(raw_dir))
     elif os_name == "Windows":
         dir = Path.home()
     else:
@@ -82,7 +92,7 @@ def _default_dir():
     return dir / "DRPG"
 
 
-def _setup_logger(level_name):
+def _setup_logger(level_name: str) -> None:
     level = logging.getLevelName(level_name)
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(level)
@@ -93,6 +103,6 @@ def _setup_logger(level_name):
     )
 
 
-def _handle_signal(sig, frame):
+def _handle_signal(sig: int, frame: Frame) -> None:
     logging.getLogger("drpg").info("Stopping...")
     sys.exit(0)

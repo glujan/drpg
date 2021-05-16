@@ -8,7 +8,7 @@ with open("requirements.in", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="drpg",
-    version="0.0.8",
+    version="0.0.9",
     author="Grzegorz Janik",
     description="Download and keep up to date your purchases from DriveThruRPG",
     long_description=long_description,
@@ -19,6 +19,7 @@ setuptools.setup(
         "Development Status :: 4 - Beta",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
@@ -27,4 +28,5 @@ setuptools.setup(
     },
     python_requires=">=3.8",
     install_requires=install_requires,
+    package_data={"drpg": ["py.typed"]},
 )

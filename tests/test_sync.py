@@ -7,11 +7,12 @@ from os import stat_result
 from pathlib import Path
 from unittest import TestCase, mock
 
-from httpx import HTTPError
 import respx
+from httpx import HTTPError
 
 import drpg.sync
 from drpg.api import DrpgApi
+
 from .responses import Checksum, FileResponse, FileTaskResponse, ProductResponse
 
 

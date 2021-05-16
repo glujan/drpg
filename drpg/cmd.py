@@ -1,5 +1,8 @@
 import argparse
+import configparser
 import logging
+import os.path
+import platform
 import signal
 import sys
 from os import environ
@@ -37,9 +40,9 @@ def _parse_cli(args=None):
     parser.add_argument(
         "--library-path",
         "-p",
-        default=environ.get("DRPG_LIBRARY_PATH", "repository"),
+        default=environ.get("DRPG_LIBRARY_PATH", _default_dir()),
         type=Path,
-        help="Path to your downloads. Defaults to './repository'",
+        help=f"Path to your downloads. Defaults to {_default_dir()}",
     )
     parser.add_argument(
         "--use-checksums",
@@ -56,6 +59,27 @@ def _parse_cli(args=None):
     )
 
     return parser.parse_args(args)
+
+
+def _default_dir():
+    os_name = platform.system()
+    if os_name == "Linux":
+        xdg_config = Path(environ.get("XDG_CONFIG_HOME", "~/.config")).expanduser()
+        try:
+            with open(xdg_config / "user-dirs.dirs", "r") as f:
+                raw_config = "[xdg]\n" + f.read().replace('"', "")
+            config = configparser.ConfigParser()
+            config.read_string(raw_config)
+            dir = config["xdg"]["xdg_documents_dir"]
+        except (FileNotFoundError, KeyError):
+            dir = "$HOME/Documents"
+        finally:
+            dir = Path(os.path.expandvars(dir))
+    elif os_name == "Windows":
+        dir = Path.home()
+    else:
+        dir = Path.cwd()
+    return dir / "DRPG"
 
 
 def _setup_logger(level_name):

@@ -2,10 +2,11 @@ import re
 from unittest import TestCase, mock
 from urllib.parse import urlencode
 
-from httpx import Response
 import respx
+from httpx import Response
 
 from drpg import api
+
 from .responses import FileTaskResponse
 
 api_url = api.DrpgApi.API_URL

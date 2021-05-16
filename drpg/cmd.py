@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 from drpg import DrpgSync
 from drpg.config import Config
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from typing import List, Optional, TypeVar
 
     CliArgs = List[str]

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import httpx
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from typing import Iterator, List, TypedDict
 
     class TokenResponse(TypedDict):

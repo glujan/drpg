@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import functools
 import logging
 import re
@@ -5,22 +7,33 @@ from datetime import datetime, timedelta
 from hashlib import md5
 from multiprocessing.pool import ThreadPool
 from time import timezone
+from typing import TYPE_CHECKING
 
 import httpx
 
 from drpg.api import DrpgApi
+
+if TYPE_CHECKING:  # pragma: no cover
+    from pathlib import Path
+    from typing import Any, Callable, Optional, Type
+
+    from drpg.api import DownloadItem, Product
+    from drpg.config import Config
+
+    NoneCallable = Callable[..., None]
+    Decorator = Callable[[NoneCallable], NoneCallable]
 
 
 _checksum_time_format = "%Y-%m-%d %H:%M:%S"
 logger = logging.getLogger("drpg")
 
 
-def suppress_errors(*errors):
+def suppress_errors(*errors: Type[Exception]) -> Decorator:
     """Silence but log provided errors."""
 
-    def decorator(func):
+    def decorator(func: NoneCallable) -> NoneCallable:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> None:
             try:
                 func(*args, **kwargs)
             except errors as e:
@@ -34,28 +47,28 @@ def suppress_errors(*errors):
 class DrpgSync:
     """High level DriveThruRPG client that syncs products from a customer's library."""
 
-    def __init__(self, config):
+    def __init__(self, config: Config) -> None:
         self._use_checksums = config.use_checksums
         self._library_path = config.library_path
         self._api = DrpgApi(config.token)
 
-    def sync(self):
+    def sync(self) -> None:
         """Download all new, updated and not yet synced items to a sync directory."""
 
         self._api.token()
-        items = (
+        process_item_args = (
             (product, item)
             for product in self._api.customer_products()
-            for item in product.pop("files")
-            if self._need_download(product, item, self._use_checksums)
+            for item in product["files"]
+            if self._need_download(product, item)
         )
 
         with ThreadPool(5) as pool:
-            pool.starmap(self._process_item, items)
+            pool.starmap(self._process_item, process_item_args)
         logger.info("Done!")
 
     @suppress_errors(httpx.HTTPError, PermissionError)
-    def _process_item(self, product, item):
+    def _process_item(self, product: Product, item: DownloadItem) -> None:
         """Prepare for and download the item to the sync directory."""
 
         logger.info("Processing: %s - %s", product["products_name"], item["filename"])
@@ -67,7 +80,7 @@ class DrpgSync:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(file_response.content)
 
-    def _need_download(self, product, item, use_checksums=False):
+    def _need_download(self, product: Product, item: DownloadItem) -> bool:
         """Specify whether or not the item needs to be downloaded."""
 
         path = self._file_path(product, item)
@@ -83,7 +96,7 @@ class DrpgSync:
             return True
 
         if (
-            use_checksums
+            self._use_checksums
             and (checksum := _newest_checksum(item))
             and md5(path.read_bytes()).hexdigest() != checksum
         ):
@@ -92,7 +105,7 @@ class DrpgSync:
         logger.debug("Up to date: %s - %s", product["products_name"], item["filename"])
         return False
 
-    def _file_path(self, product, item):
+    def _file_path(self, product: Product, item: DownloadItem) -> Path:
         publishers_name = _escape_path_part(product.get("publishers_name", "Others"))
         product_name = _escape_path_part(product["products_name"])
         item_name = _escape_path_part(item["filename"])
@@ -107,7 +120,7 @@ def _escape_path_part(part: str) -> str:
     return part
 
 
-def _newest_checksum(item):
+def _newest_checksum(item: DownloadItem) -> Optional[str]:
     return max(
         item["checksums"],
         default={"checksum": None},

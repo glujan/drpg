@@ -56,15 +56,15 @@ class DrpgSync:
         """Download all new, updated and not yet synced items to a sync directory."""
 
         self._api.token()
-        items = (
+        process_item_args = (
             (product, item)
             for product in self._api.customer_products()
             for item in product["files"]
-            if self._need_download(product, item, self._use_checksums)
+            if self._need_download(product, item)
         )
 
         with ThreadPool(5) as pool:
-            pool.starmap(self._process_item, items)
+            pool.starmap(self._process_item, process_item_args)
         logger.info("Done!")
 
     @suppress_errors(httpx.HTTPError, PermissionError)
@@ -80,9 +80,7 @@ class DrpgSync:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(file_response.content)
 
-    def _need_download(
-        self, product: Product, item: DownloadItem, use_checksums: bool = False
-    ) -> bool:
+    def _need_download(self, product: Product, item: DownloadItem) -> bool:
         """Specify whether or not the item needs to be downloaded."""
 
         path = self._file_path(product, item)
@@ -98,7 +96,7 @@ class DrpgSync:
             return True
 
         if (
-            use_checksums
+            self._use_checksums
             and (checksum := _newest_checksum(item))
             and md5(path.read_bytes()).hexdigest() != checksum
         ):

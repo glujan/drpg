@@ -92,11 +92,13 @@ class DrpgSyncNeedDownloadTest(TestCase):
 
     @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock(**new_file_kwargs))
     def test_md5_check(self, _):
+        self.sync._use_checksums = True
+
         with self.subTest("same md5"):
             item = self.dummy_item(self.old_date)
             product = self.dummy_product(item)
 
-            need = self.sync._need_download(product, item, use_checksums=True)
+            need = self.sync._need_download(product, item)
             self.assertFalse(need)
 
         with self.subTest("different md5"):
@@ -104,7 +106,7 @@ class DrpgSyncNeedDownloadTest(TestCase):
             item["checksums"][0]["checksum"] += "not matching"
             product = self.dummy_product(item)
 
-            need = self.sync._need_download(product, item, use_checksums=True)
+            need = self.sync._need_download(product, item)
             self.assertTrue(need)
 
         with self.subTest("remote file has no checksum"):
@@ -112,7 +114,7 @@ class DrpgSyncNeedDownloadTest(TestCase):
             item["checksums"] = []
             product = self.dummy_product(item)
 
-            need = self.sync._need_download(product, item, use_checksums=True)
+            need = self.sync._need_download(product, item)
             self.assertFalse(need)
 
     def dummy_item(self, date):

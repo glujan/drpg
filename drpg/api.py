@@ -43,7 +43,7 @@ class DrpgApi:
     API_URL = "https://www.drivethrurpg.com"
 
     def __init__(self, api_key: str):
-        self._client = httpx.Client(base_url=self.API_URL)
+        self._client = httpx.Client(base_url=self.API_URL, timeout=30.0)
         self._api_key = api_key
         self._customer_id = None
 

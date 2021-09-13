@@ -9,22 +9,24 @@ import signal
 import sys
 from os import environ
 from pathlib import Path
+from traceback import format_exception
 from typing import TYPE_CHECKING
 
 from drpg import DrpgSync
 from drpg.config import Config
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import List, Optional, TypeVar
+    from types import FrameType, TracebackType
+    from typing import List, Optional, Type
 
     CliArgs = List[str]
-    Frame = TypeVar("Frame")
 
 __all__ = ["run"]
 
 
 def run() -> None:
     signal.signal(signal.SIGINT, _handle_signal)
+    sys.excepthook = _excepthook
     config = _parse_cli()
     _setup_logger(config.log_level)
     DrpgSync(config).sync()
@@ -103,6 +105,14 @@ def _setup_logger(level_name: str) -> None:
     )
 
 
-def _handle_signal(sig: int, frame: Frame) -> None:
+def _handle_signal(sig: int, frame: FrameType) -> None:
     logging.getLogger("drpg").info("Stopping...")
     sys.exit(0)
+
+
+def _excepthook(
+    exc_type: Type[BaseException], exc: BaseException, tb: TracebackType
+) -> None:
+    logger = logging.getLogger("drpg")
+    logger.error("Unexpected error occurred, stopping!")
+    logger.debug("".join(format_exception(exc_type, exc, tb)))

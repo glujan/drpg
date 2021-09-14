@@ -4,6 +4,8 @@
 
 Just go ahead and create [a new issue](issues/new). Please make your
 description clear so it's easy to understand what the issue is about.
+Is this is possible, paste the output of the program with a
+`--log-level DEBUG` option.
 
 ## New features or bug fixes
 

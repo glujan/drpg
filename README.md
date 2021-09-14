@@ -1,9 +1,10 @@
 # dRPG downloads and keeps your purchases from DriveThruRPG up to date
 [![Maintainability](https://api.codeclimate.com/v1/badges/b3128ba6938f92088135/maintainability)](https://codeclimate.com/github/glujan/drpg/maintainability)
+![PyPI](https://img.shields.io/pypi/v/drpg?label=drpg)
 
 ## Installation
 
-This script is tested with Python 3.8 and requires Python 3.8 or newer to run.
+This script runs with Python 3.8 and newer.
 
 You can install dRPG from PyPI:
 ```bash
@@ -15,11 +16,18 @@ drpg --help  # or python -m drpg --help
 
 1. Go to [your account settings](https://www.drivethrurpg.com/account_edit.php)
    and generate a new application key.
-2. Copy the key and run the script: `drpg --token <YOUR_DRPG_TOKEN>`.
+2. Copy the key and run the script: `drpg --token <YOUR_DRPG_TOKEN>` - or set
+   `DRPG_TOKEN` env variable and run `drpg`.
 3. Now just sit, relax and wait. Initial synchronization may take a while so
    why don't you grab a cup of tea or whatever your favourite beverage is. On
    consecutive runs the script will download only new and changed files which
    will be a way faster.
+
+## Compatibility
+
+Because of the nature of using an undocumented API, this software may break
+without a notice. Version number indicates a year and a month when the software
+was proved to be working with a real DriveThruRPG account.
 
 ### Advanced options
 
@@ -33,17 +41,6 @@ You can change a log level by using `--log-level=<YOUR_LOG_LEVEL>`. Choices are
 DEBUG, INFO, WARNING, ERROR, CRITICAL.
 
 For more information, run the script with `--help`.
-
-## Roadmap
-
-- [x] Have a working scipt
-- [x] Allow to choose where to sync purchased products
-- [x] Allow for fast - based on modification timestamps - or strict - based on both modification timestamps and md5 checksums - comparison of synced and remote files
-- [ ] Publish a stable release
-  - [ ] Compatible with [DriveThruRPG Library App](https://www.drivethrurpg.com/library_client.php) v. 3.0.1.3
-  - [ ] Document which official client version is the script compatible with
-  - [ ] Decide on a versioning scheme - currently I'm considering using a [CalVer](https://calver.org/) with a version number matching the official client release date. For example version 2021.1.5 would be compatible with DriveThruRPG Library App v. 3.0.1.3 which was released on January 5, 2021 (see its [changelog](https://www.drivethrurpg.com/library_client.php#changelog-mac) for release dates)
-
 
 ## Found a bug?
 

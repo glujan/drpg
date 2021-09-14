@@ -16,7 +16,7 @@ setuptools.setup(
     url="https://github.com/glujan/drpg",
     packages=["drpg"],
     classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",

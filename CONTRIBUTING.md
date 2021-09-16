@@ -49,15 +49,3 @@ python setup.py bdist_wheel
 ```
 
 The wheel package will be saved in a `dist/` directory.
-
-## Building a binary distribution
-
-Stand-alone executables are generated using PyInstaller. To generate a binary
-for your platform run:
-
-```bash
-source venv/bin/activate
-pyinstaller drpg.spec
-```
-
-The binary will be saved in a `dist/` directory.

@@ -1,5 +1,8 @@
 import setuptools
 
+import drpg
+
+
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
@@ -8,7 +11,7 @@ with open("requirements.in", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="drpg",
-    version="0.0.9",
+    version=drpg.__version__,
     author="Grzegorz Janik",
     description="Download and keep up to date your purchases from DriveThruRPG",
     long_description=long_description,

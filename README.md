@@ -6,7 +6,8 @@
 
 This script runs with Python 3.8 and newer.
 
-You can install dRPG from PyPI:
+You can install dRPG from PyPI or using pip:
+   Just write below code in your Command Prompt
 ```bash
 pip install --user drpg
 drpg --help  # or python -m drpg --help

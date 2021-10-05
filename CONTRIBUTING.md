@@ -1,4 +1,4 @@
-# Contributing
+# Contributing Guide
 
 ## Bug reports, features requests
 
@@ -12,7 +12,7 @@ Is this is possible, paste the output of the program with a
 Use standard GitHub Flow - create a fork of this repo, prepare a branch with
 changes you'd like to have merged to the project and create a new Pull Request.
 
-Please provide tests for the code you are contributing.
+Please provide tests/screenshots for the code you are contributing.
 
 # Development
 

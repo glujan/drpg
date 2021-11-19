@@ -59,7 +59,7 @@ platformdirs==2.3.0
     # via virtualenv
 pluggy==1.0.0
     # via tox
-py==1.10.0
+py==1.11.0
     # via tox
 pycodestyle==2.7.0
     # via flake8
@@ -87,7 +87,7 @@ toml==0.10.2
     # via tox
 tomli==1.2.1
     # via pep517
-tox==3.24.3
+tox==3.24.4
     # via -r requirements.dev.in
 virtualenv==20.7.2
     # via tox

@@ -1,4 +1,4 @@
 from drpg.sync import DrpgSync
 
 __all__ = ["DrpgSync"]
-__version__ = "2021.11.0"
+__version__ = "2022.2.0"

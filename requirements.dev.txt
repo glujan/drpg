@@ -4,70 +4,69 @@
 #
 #    pip-compile --output-file=requirements.dev.txt requirements.dev.in
 #
-anyio==3.3.1
+anyio==3.5.0
     # via
     #   -r requirements.txt
     #   httpcore
-backports.entry-points-selectable==1.1.0
-    # via virtualenv
-certifi==2021.5.30
+certifi==2021.10.8
+    # via
+    #   -r requirements.txt
+    #   httpcore
+    #   httpx
+charset-normalizer==2.0.12
     # via
     #   -r requirements.txt
     #   httpx
-charset-normalizer==2.0.4
-    # via
-    #   -r requirements.txt
-    #   httpx
-click==8.0.1
+click==8.0.3
     # via pip-tools
-coverage==5.5
+coverage==6.3.1
     # via -r requirements.dev.in
-distlib==0.3.2
+distlib==0.3.4
     # via virtualenv
-filelock==3.0.12
+filelock==3.4.2
     # via
     #   tox
     #   virtualenv
-flake8==3.9.2
+flake8==4.0.1
     # via -r requirements.dev.in
 h11==0.12.0
     # via
     #   -r requirements.txt
     #   httpcore
-httpcore==0.13.7
+httpcore==0.14.7
     # via
     #   -r requirements.txt
     #   httpx
-httpx==0.19.0
+httpx==0.22.0
     # via
     #   -r requirements.txt
     #   respx
-idna==3.2
+idna==3.3
     # via
     #   -r requirements.txt
     #   anyio
     #   rfc3986
 mccabe==0.6.1
     # via flake8
-packaging==21.0
+packaging==21.3
     # via tox
-pep517==0.11.0
+pep517==0.12.0
     # via pip-tools
-pip-tools==6.2.0
+pip-tools==6.5.1
     # via -r requirements.dev.in
-platformdirs==2.3.0
+platformdirs==2.5.0
     # via virtualenv
 pluggy==1.0.0
     # via tox
 py==1.11.0
     # via tox
-pycodestyle==2.7.0
+pycodestyle==2.8.0
     # via flake8
-pyflakes==2.3.1
+pyflakes==2.4.0
     # via flake8
-pyparsing==2.4.7
+pyparsing==3.0.7
     # via packaging
-respx==0.17.1
+respx==0.19.2
     # via -r requirements.dev.in
 rfc3986[idna2008]==1.5.0
     # via
@@ -85,13 +84,13 @@ sniffio==1.2.0
     #   httpx
 toml==0.10.2
     # via tox
-tomli==1.2.1
+tomli==2.0.1
     # via pep517
-tox==3.24.4
+tox==3.24.5
     # via -r requirements.dev.in
-virtualenv==20.7.2
+virtualenv==20.13.1
     # via tox
-wheel==0.37.0
+wheel==0.37.1
     # via pip-tools
 
 # The following packages are considered to be unsafe in a requirements file:

@@ -15,7 +15,7 @@ from drpg.api import DrpgApi
 
 if TYPE_CHECKING:  # pragma: no cover
     from pathlib import Path
-    from typing import Any, Callable, Optional, Type
+    from typing import Any, Callable
 
     from drpg.api import DownloadItem, Product
     from drpg.config import Config
@@ -28,7 +28,7 @@ _checksum_time_format = "%Y-%m-%d %H:%M:%S"
 logger = logging.getLogger("drpg")
 
 
-def suppress_errors(*errors: Type[Exception]) -> Decorator:
+def suppress_errors(*errors: type[Exception]) -> Decorator:
     """Silence but log provided errors."""
 
     def decorator(func: NoneCallable) -> NoneCallable:
@@ -74,7 +74,9 @@ class DrpgSync:
         logger.info("Processing: %s - %s", product["products_name"], item["filename"])
 
         url_data = self._api.file_task(product["products_id"], item["bundle_id"])
-        file_response = httpx.get(url_data["download_url"], timeout=30.0, follow_redirects=True)
+        file_response = httpx.get(
+            url_data["download_url"], timeout=30.0, follow_redirects=True
+        )
 
         path = self._file_path(product, item)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -120,7 +122,7 @@ def _escape_path_part(part: str) -> str:
     return part
 
 
-def _newest_checksum(item: DownloadItem) -> Optional[str]:
+def _newest_checksum(item: DownloadItem) -> str | None:
     return max(
         item["checksums"],
         default={"checksum": None},

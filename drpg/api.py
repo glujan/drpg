@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import httpx
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Iterator, List, TypedDict
+    from typing import Iterator, TypedDict
 
     class TokenResponse(TypedDict):
         customers_id: str
@@ -21,13 +21,13 @@ if TYPE_CHECKING:  # pragma: no cover
         products_id: str
         publishers_name: str
         products_name: str
-        files: List[DownloadItem]
+        files: list[DownloadItem]
 
     class DownloadItem(TypedDict):
         filename: str
         last_modified: str
         bundle_id: str
-        checksums: List[Checksum]
+        checksums: list[Checksum]
 
     class Checksum(TypedDict):
         checksum: str
@@ -100,7 +100,7 @@ class DrpgApi:
         logger.debug("Got download link for: %s - %s", product_id, item_id)
         return data
 
-    def _product_page(self, page: int, per_page: int) -> List[Product]:
+    def _product_page(self, page: int, per_page: int) -> list[Product]:
         """
         List products from a specified page.
 

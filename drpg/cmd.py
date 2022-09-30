@@ -17,9 +17,8 @@ from drpg.config import Config
 
 if TYPE_CHECKING:  # pragma: no cover
     from types import FrameType, TracebackType
-    from typing import List, Optional, Type
 
-    CliArgs = List[str]
+    CliArgs = list[str]
 
 __all__ = ["run"]
 
@@ -29,10 +28,11 @@ def run() -> None:
     sys.excepthook = _excepthook
     config = _parse_cli()
     _setup_logger(config.log_level)
+
     DrpgSync(config).sync()
 
 
-def _parse_cli(args: Optional[CliArgs] = None) -> Config:
+def _parse_cli(args: CliArgs | None = None) -> Config:
     parser = argparse.ArgumentParser(
         prog="drpg",
         description="Download and keep up to date your purchases from DriveThruRPG",
@@ -78,7 +78,7 @@ def _default_dir() -> Path:
     if os_name == "Linux":
         xdg_config = Path(environ.get("XDG_CONFIG_HOME", "~/.config")).expanduser()
         try:
-            with open(xdg_config / "user-dirs.dirs", "r") as f:
+            with open(xdg_config / "user-dirs.dirs") as f:
                 raw_config = "[xdg]\n" + f.read().replace('"', "")
             config = configparser.ConfigParser()
             config.read_string(raw_config)
@@ -105,13 +105,13 @@ def _setup_logger(level_name: str) -> None:
     )
 
 
-def _handle_signal(sig: int, frame: FrameType) -> None:
+def _handle_signal(sig: int, frame: FrameType | None) -> None:
     logging.getLogger("drpg").info("Stopping...")
     sys.exit(0)
 
 
 def _excepthook(
-    exc_type: Type[BaseException], exc: BaseException, tb: TracebackType
+    exc_type: type[BaseException], exc: BaseException, tb: TracebackType | None
 ) -> None:
     logger = logging.getLogger("drpg")
     logger.error("Unexpected error occurred, stopping!")

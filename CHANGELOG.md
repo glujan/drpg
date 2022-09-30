@@ -1,5 +1,8 @@
 # Changelog
 
+## 2022.9.0
+* support httpx 0.20-0.22+
+
 ## 2022.2.0
 * support httpx 0.16-0.22+
 

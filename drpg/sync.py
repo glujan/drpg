@@ -74,7 +74,7 @@ class DrpgSync:
         logger.info("Processing: %s - %s", product["products_name"], item["filename"])
 
         url_data = self._api.file_task(product["products_id"], item["bundle_id"])
-        file_response = httpx.get(url_data["download_url"], timeout=30.0)
+        file_response = httpx.get(url_data["download_url"], timeout=30.0, follow_redirects=True)
 
         path = self._file_path(product, item)
         path.parent.mkdir(parents=True, exist_ok=True)

@@ -28,6 +28,7 @@ def run() -> None:
     sys.excepthook = _excepthook
     config = _parse_cli()
     _setup_logger(config.log_level)
+
     DrpgSync(config).sync()
 
 
@@ -104,13 +105,13 @@ def _setup_logger(level_name: str) -> None:
     )
 
 
-def _handle_signal(sig: int, frame: FrameType) -> None:
+def _handle_signal(sig: int, frame: FrameType | None) -> None:
     logging.getLogger("drpg").info("Stopping...")
     sys.exit(0)
 
 
 def _excepthook(
-    exc_type: type[BaseException], exc: BaseException, tb: TracebackType
+    exc_type: type[BaseException], exc: BaseException, tb: TracebackType | None
 ) -> None:
     logger = logging.getLogger("drpg")
     logger.error("Unexpected error occurred, stopping!")

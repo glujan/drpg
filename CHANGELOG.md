@@ -1,5 +1,8 @@
 # Changelog
 
+## 2022.12.0
+* support Python 3.11
+
 ## 2022.9.0
 * support httpx 0.20-0.22+
 

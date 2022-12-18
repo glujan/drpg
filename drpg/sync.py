@@ -35,7 +35,7 @@ def suppress_errors(*errors: type[Exception]) -> Decorator:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> None:
             try:
-                func(*args, **kwargs)
+                return func(*args, **kwargs)
             except errors as e:
                 logger.exception(e)
 

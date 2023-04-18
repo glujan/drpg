@@ -42,6 +42,10 @@ class DrpgApi:
 
     API_URL = "https://www.drivethrurpg.com"
 
+    class FileTaskException(Exception):
+        UNEXPECTED_RESPONSE = "Got response with unexpected schema"
+        REQUEST_FAILED = "Got non 2xx response"
+
     def __init__(self, api_key: str):
         self._client = httpx.Client(base_url=self.API_URL, timeout=30.0)
         self._api_key = api_key
@@ -91,7 +95,35 @@ class DrpgApi:
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
 
-        while (data := resp.json()["message"])["progress"].startswith("Preparing"):
+        def _parse_message(resp):
+            message = resp.json()["message"]
+            if resp.is_success:
+                expected_keys = {"progress", "file_tasks_id", "download_url"}
+                if isinstance(message, dict) and expected_keys.issubset(message.keys()):
+                    logger.debug(
+                        "Got download url for %s - %s: %s", product_id, item_id, message
+                    )
+                else:
+                    logger.debug(
+                        "Got unexpected message when getting download url for %s - %s: %s",
+                        product_id,
+                        item_id,
+                        message,
+                    )
+                    raise self.FileTaskException(
+                        self.FileTaskException.UNEXPECTED_RESPONSE
+                    )
+            else:
+                logger.debug(
+                    "Could not get download link for %s - %s: %s",
+                    product_id,
+                    item_id,
+                    message,
+                )
+                raise self.FileTaskException(self.FileTaskException.REQUEST_FAILED)
+            return message
+
+        while (data := _parse_message(resp))["progress"].startswith("Preparing"):
             logger.debug("Waiting for download link for: %s - %s", product_id, item_id)
             sleep(3)
             task_id = data["file_tasks_id"]

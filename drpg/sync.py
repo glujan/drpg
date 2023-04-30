@@ -73,7 +73,16 @@ class DrpgSync:
 
         logger.info("Processing: %s - %s", product["products_name"], item["filename"])
 
-        url_data = self._api.file_task(product["products_id"], item["bundle_id"])
+        try:
+            url_data = self._api.file_task(product["products_id"], item["bundle_id"])
+        except self._api.FileTaskException:
+            logger.warning(
+                "Could not download product: %s - %s",
+                product["products_name"],
+                item["filename"],
+            )
+            return
+
         file_response = httpx.get(
             url_data["download_url"], timeout=30.0, follow_redirects=True
         )

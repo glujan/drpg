@@ -177,7 +177,7 @@ class DrpgSyncProcessItemTest(TestCase):
 
     @mock.patch("drpg.sync.logger")
     @mock.patch("drpg.api.DrpgApi.file_task")
-    def test_error_occurs(self, m_file_task, _):
+    def test_io_error_occurs(self, m_file_task, _):
         class TestHTTPError(HTTPError):
             def __init__(self):
                 "Helper error to easier make an instance of HTTPError"
@@ -189,6 +189,19 @@ class DrpgSyncProcessItemTest(TestCase):
                     self.sync._process_item(self.product, self.item)
                 except error_class as e:
                     self.fail(e)
+
+    @mock.patch("drpg.sync.logger")
+    @mock.patch("drpg.api.DrpgApi.file_task")
+    def test_unexpected_file_task_response(self, m_file_task, m_logger):
+        m_file_task.side_effect = DrpgApi.FileTaskException
+        try:
+            self.sync._process_item(self.product, self.item)
+        except DrpgApi.FileTaskException as e:
+            self.fail(e)
+        else:
+            m_logger.warning.assert_called_once()
+            msg, *_ = m_logger.warning.call_args[0]
+            self.assertIn("Could not download product", msg)
 
 
 class DrpgSyncTest(TestCase):

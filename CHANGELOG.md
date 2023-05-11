@@ -1,5 +1,8 @@
 # Changelog
 
+## 2023.5.11
+* fixed a bug that interrupted some downloads (#34)
+
 ## 2022.12.0
 * support Python 3.11
 

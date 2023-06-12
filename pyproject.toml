@@ -43,7 +43,7 @@ Homepage = "https://github.com/glujan/drpg"
 
 [tool.coverage.run]
 branch = true
-include = "drpg/*"
+include = ["drpg/*"]
 omit = [".ropeproject", "venv"]
 
 [tool.coverage.report]
@@ -53,9 +53,5 @@ omit = [".ropeproject", "venv"]
 path = "drpg/__init__.py"
 
 [tool.hatch.build.targets.sdist]
-include = [
-    "/drpg",
-]
-exclude = [
-    ".gitignore",
-]
+include = ["/drpg"]
+exclude = [".gitignore"]

@@ -24,6 +24,15 @@ dependencies = [
     "httpx>=0.20",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "coverage[toml]",
+    "flake8",
+    "respx",
+    "pip-tools",
+    "tox",
+]
+
 [project.scripts]
 drpg = "drpg.cmd:run"
 
@@ -33,16 +42,12 @@ GitHub = "https://github.com/glujan/drpg"
 Homepage = "https://github.com/glujan/drpg"
 
 [tool.coverage.run]
-branch = True
-include = drpg/*
-omit =
-    .ropeproject,
-    venv
+branch = true
+include = "drpg/*"
+omit = [".ropeproject", "venv"]
 
 [tool.coverage.report]
-omit =
-    .ropeproject,
-    venv
+omit = [".ropeproject", "venv"]
 
 [tool.hatch.version]
 path = "drpg/__init__.py"

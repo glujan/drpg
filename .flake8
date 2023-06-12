@@ -1,0 +1,6 @@
+[flake8]
+max-complexity = 10
+max-line-length = 100
+extend-exclude =
+    .ropeproject,
+    venv

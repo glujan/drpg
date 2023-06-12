@@ -1,5 +1,8 @@
 # Changelog
 
+## 2023.6.12-dev
+* support httpx 0.20-0.24+
+
 ## 2023.5.11
 * fixed a bug that interrupted some downloads (#34)
 

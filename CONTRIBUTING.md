@@ -40,12 +40,11 @@ python -m unittest discover
 
 ## Building a wheel
 
-The project is using `setuptools`. To generate a source or wheel package run:
+The project is using `build` with `hatchling` as a backend. To generate a source or wheel package run:
 
 ```bash
 source venv/bin/activate
-python setup.py sdist
-python setup.py bdist_wheel
+python -m build --sdist --wheel --outdir dist/
 ```
 
-The wheel package will be saved in a `dist/` directory.
+The wheel and source distribution will be saved in a `dist/` directory.

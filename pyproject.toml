@@ -1,0 +1,56 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "drpg"
+dynamic = ["version"]
+description = "Download and keep up to date your purchases from DriveThruRPG"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.8"
+authors = [
+    { name = "Grzegorz Janik" },
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: Implementation :: CPython",
+]
+dependencies = [
+    "httpx>=0.20",
+]
+
+[project.scripts]
+drpg = "drpg.cmd:run"
+
+[project.urls]
+Changelog = "https://github.com/glujan/drpg/blob/master/CHANGELOG.md"
+GitHub = "https://github.com/glujan/drpg"
+Homepage = "https://github.com/glujan/drpg"
+
+[tool.coverage.run]
+branch = True
+include = drpg/*
+omit =
+    .ropeproject,
+    venv
+
+[tool.coverage.report]
+omit =
+    .ropeproject,
+    venv
+
+[tool.hatch.version]
+path = "drpg/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/drpg",
+]
+exclude = [
+    ".gitignore",
+]

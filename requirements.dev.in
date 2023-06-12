@@ -1,5 +1,5 @@
 -r requirements.txt
-coverage
+coverage[toml]
 flake8
 respx
 pip-tools>=5.5.0

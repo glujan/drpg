@@ -23,7 +23,7 @@ click==8.1.3
     # via pip-tools
 colorama==0.4.6
     # via tox
-coverage==6.5.0
+coverage[toml]==6.5.0
     # via -r requirements.dev.in
 distlib==0.3.6
     # via virtualenv
@@ -88,6 +88,7 @@ sniffio==1.3.0
 tomli==2.0.1
     # via
     #   build
+    #   coverage
     #   pep517
     #   pyproject-api
     #   tox

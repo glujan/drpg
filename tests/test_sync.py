@@ -20,6 +20,7 @@ class dummy_config:
     token = "private-token"
     use_checksums = False
     library_path = Path("./test_library")
+    dry_run = False
 
 
 PathMock = partial(mock.Mock, spec=Path)

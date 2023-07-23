@@ -69,6 +69,12 @@ def _parse_cli(args: CliArgs | None = None) -> Config:
         choices=[logging.getLevelName(i) for i in range(10, 60, 10)],
         help="How verbose the output should be. Defaults to 'INFO'",
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        default=environ.get("DRPG_DRY_RUN", "false").lower() == "true",
+        help="Determine what should be downloaded, but do not download it. Defaults to false",
+    )
 
     return parser.parse_args(args, namespace=Config())
 

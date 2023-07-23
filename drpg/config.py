@@ -10,3 +10,4 @@ class Config:
     library_path: Path
     use_checksums: bool
     log_level: str
+    dry_run: bool

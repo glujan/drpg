@@ -50,6 +50,7 @@ class DrpgSync:
     def __init__(self, config: Config) -> None:
         self._use_checksums = config.use_checksums
         self._library_path = config.library_path
+        self._dry_run = config.dry_run
         self._api = DrpgApi(config.token)
 
     def sync(self) -> None:
@@ -71,25 +72,29 @@ class DrpgSync:
     def _process_item(self, product: Product, item: DownloadItem) -> None:
         """Prepare for and download the item to the sync directory."""
 
-        logger.info("Processing: %s - %s", product["products_name"], item["filename"])
-
-        try:
-            url_data = self._api.file_task(product["products_id"], item["bundle_id"])
-        except self._api.FileTaskException:
-            logger.warning(
-                "Could not download product: %s - %s",
-                product["products_name"],
-                item["filename"],
-            )
-            return
-
-        file_response = httpx.get(
-            url_data["download_url"], timeout=30.0, follow_redirects=True
-        )
-
         path = self._file_path(product, item)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(file_response.content)
+
+        if self._dry_run:
+            logger.info("DRY RUN - would have downloaded file: %s", path)
+        else:
+            logger.info("Processing: %s - %s", product["products_name"], item["filename"])
+
+            try:
+                url_data = self._api.file_task(product["products_id"], item["bundle_id"])
+            except self._api.FileTaskException:
+                logger.warning(
+                    "Could not download product: %s - %s",
+                    product["products_name"],
+                    item["filename"],
+                )
+                return
+
+            file_response = httpx.get(
+                url_data["download_url"], timeout=30.0, follow_redirects=True
+            )
+
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(file_response.content)
 
     def _need_download(self, product: Product, item: DownloadItem) -> bool:
         """Specify whether or not the item needs to be downloaded."""

@@ -72,7 +72,11 @@ class DrpgSync:
     def _process_item(self, product: Product, item: DownloadItem) -> None:
         """Prepare for and download the item to the sync directory."""
 
-        if not self._dry_run:
+        path = self._file_path(product, item)
+
+        if self._dry_run:
+            logger.info("DRY RUN - would have downloaded file: %s", path)
+        else:
             logger.info("Processing: %s - %s", product["products_name"], item["filename"])
 
             try:
@@ -89,11 +93,6 @@ class DrpgSync:
                 url_data["download_url"], timeout=30.0, follow_redirects=True
             )
 
-        path = self._file_path(product, item)
-
-        if self._dry_run:
-            logger.info("DRY RUN - would have downloaded file: %s", path)
-        else:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(file_response.content)
 

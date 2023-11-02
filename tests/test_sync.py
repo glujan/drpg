@@ -260,22 +260,22 @@ class EscapePathTest(TestCase):
         # test cases like pytest does. Instead, we'll just loop through this table of expectations.
         test_data = [
             # drpg - fabricated names for the test
-            # ["<name>", False, "name"],
-            # ["No/slash", False, "No - slash"],
-            # ["less<than", False, "less - than"],
-            # ["two -  - to one", False, "two - to one"],
-            # ["squash   \tme", False, "squash me"],
-            # [" trim ", False, "trim"],
-            #
-            # # drpg with compatibility mode off - These are actual product names
-            # ["Game Designers&#039; Workshop (GDW)", False, "Game Designers' Workshop (GDW)"],
-            # ["The Eyes of Winter (Holiday Adventure)", False, "The Eyes of Winter (Holiday Adventure)"],
-            # ["Not So Fast, Billy Ray!", False, "Not So Fast, Billy Ray!"],
-            # ["SAWS+ Character Sheet for Pathfinder", False, "SAWS+ Character Sheet for Pathfinder"],
-            # ["Tabletop Gaming Guide to: Vikings", False, "Tabletop Gaming Guide to: Vikings"],
-            # ["Fast & Light", False, "Fast & Light"],
-            # ["1,000+ Forgotten Magical Items Volume I (Weapons & Armor)", False,
-            #  "1,000+ Forgotten Magical Items Volume I (Weapons & Armor)"],
+            ["<name>", False, "name"],
+            ["No/slash", False, "No - slash"],
+            ["less<than", False, "less - than"],
+            ["two -  - to one", False, "two - to one"],
+            ["squash   \tme", False, "squash me"],
+            [" trim ", False, "trim"],
+
+            # drpg with compatibility mode off - These are actual product names
+            ["Game Designers&#039; Workshop (GDW)", False, "Game Designers' Workshop (GDW)"],
+            ["The Eyes of Winter (Holiday Adventure)", False, "The Eyes of Winter (Holiday Adventure)"],
+            ["Not So Fast, Billy Ray!", False, "Not So Fast, Billy Ray!"],
+            ["SAWS+ Character Sheet for Pathfinder", False, "SAWS+ Character Sheet for Pathfinder"],
+            ["Tabletop Gaming Guide to: Vikings", False, "Tabletop Gaming Guide to: Vikings"],
+            ["Fast & Light", False, "Fast & Light"],
+            ["1,000+ Forgotten Magical Items Volume I (Weapons & Armor)", False,
+             "1,000+ Forgotten Magical Items Volume I (Weapons & Armor)"],
 
             # compatibility mode - fabricated names for the test
             # ["<name>", True, "_name_"],

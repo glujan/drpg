@@ -48,3 +48,20 @@ python -m build --sdist --wheel --outdir dist/
 ```
 
 The wheel and source distribution will be saved in a `dist/` directory.
+
+
+## Testing out the wheel
+
+If you want to test the wheel you just created, install it in your project, like this:
+
+```bash
+source venv/bin/activate
+pip install dist/drpg-2023.6.12.dev0-py3-none-any.whl --force-reinstall
+```
+Use the name of your own `.whl` file, of course.
+
+Then you can do a test run like this:
+
+```bash
+python -m drpg --dry-run --token <whatever> --library-path <whatever>
+```

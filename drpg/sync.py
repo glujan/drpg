@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import functools
+import html
 import logging
 import re
 from datetime import datetime, timedelta
@@ -129,13 +130,6 @@ class DrpgSync:
         return self._library_path / publishers_name / product_name / item_name
 
 
-<<<<<<< Updated upstream
-def _escape_path_part(part: str) -> str:
-    separator = " - "
-    part = re.sub(r'[<>:"/\\|?*]', separator, part).strip(separator)
-    part = re.sub(f"({separator})+", separator, part)
-    part = re.sub(r"\s+", " ", part)
-=======
 def _normalize_path_part(part: str, compatibility_mode: bool) -> str:
     """
     Strip out unwanted characters in parts of the path to the downloaded file representing
@@ -164,7 +158,6 @@ def _normalize_path_part(part: str, compatibility_mode: bool) -> str:
         part = re.sub(r'[<>"/\\|?*]', separator, part).strip(separator)
         part = re.sub(f"({separator})+", separator, part)
         part = re.sub(r"\s+", " ", part)
->>>>>>> Stashed changes
     return part
 
 

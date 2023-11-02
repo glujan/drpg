@@ -256,8 +256,6 @@ class EscapePathTest(TestCase):
             name = f"some{whitespace}name"
             self.assertEqual(drpg.sync._normalize_path_part(name), "some name")
 
-<<<<<<< Updated upstream
-=======
     def test_normalize_path_part(self):
         """
         Make sure that filenames and directory names use UTF-8 character instead of escape codes.
@@ -300,7 +298,6 @@ class EscapePathTest(TestCase):
             self.assertEqual(drpg.sync._normalize_path_part(row[0], row[1]), row[2],
                              msg=f"With compatibility mode {row[1]}")
 
->>>>>>> Stashed changes
     def assert_removes_invalid_characters(self, characters):
         name = f"some{characters}name"
         self.assertEqual(drpg.sync._normalize_path_part(name), "some - name")

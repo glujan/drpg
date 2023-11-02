@@ -51,6 +51,7 @@ class DrpgSync:
         self._use_checksums = config.use_checksums
         self._library_path = config.library_path
         self._dry_run = config.dry_run
+        self._compatibility_mode = config.compatibility_mode
         self._api = DrpgApi(config.token)
 
     def sync(self) -> None:
@@ -122,17 +123,48 @@ class DrpgSync:
         return False
 
     def _file_path(self, product: Product, item: DownloadItem) -> Path:
-        publishers_name = _escape_path_part(product.get("publishers_name", "Others"))
-        product_name = _escape_path_part(product["products_name"])
-        item_name = _escape_path_part(item["filename"])
+        publishers_name = _normalize_path_part(product.get("publishers_name", "Others"), self._compatibility_mode)
+        product_name = _normalize_path_part(product["products_name"], self._compatibility_mode)
+        item_name = _normalize_path_part(item["filename"], self._compatibility_mode)
         return self._library_path / publishers_name / product_name / item_name
 
 
+<<<<<<< Updated upstream
 def _escape_path_part(part: str) -> str:
     separator = " - "
     part = re.sub(r'[<>:"/\\|?*]', separator, part).strip(separator)
     part = re.sub(f"({separator})+", separator, part)
     part = re.sub(r"\s+", " ", part)
+=======
+def _normalize_path_part(part: str, compatibility_mode: bool) -> str:
+    """
+    Strip out unwanted characters in parts of the path to the downloaded file representing
+    publisher's name, product name, and item name. There are two algorithms for normalizing
+    the names. One is the drpg way, and the other is the DriveThruRPG way.
+
+    Normalization algorithm for DriveThruRPG's client:
+    1. Replace any of the characters <>&#;(),!+: with "_"
+    # NOTE: the DTRPG client's algorithm may just be to replace anything that's not
+    # alphanumeric or a space. But the above characters are the only ones I have seen
+    # with my own eyes.
+
+    Normalization algorithm for drpg:
+    1. Unescape any HTML-escaped characters (for example, convert &nbsp; to a space)
+    2. Replace any of the characters <>"/|?& with " - " (previously, drpg removed colon)
+    3. Replace any repeated " - " separators with a single " - "
+    4. Replace repeated whitespace with a single space
+    """
+
+    if compatibility_mode:
+        separator = "_"
+        part = re.sub(r'[<>&#;(),!+:&]', separator, part)
+    else:
+        separator = " - "
+        part = html.unescape(part)
+        part = re.sub(r'[<>"/\\|?*]', separator, part).strip(separator)
+        part = re.sub(f"({separator})+", separator, part)
+        part = re.sub(r"\s+", " ", part)
+>>>>>>> Stashed changes
     return part
 
 

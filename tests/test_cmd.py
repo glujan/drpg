@@ -20,6 +20,7 @@ class ParseCliTest(TestCase):
             "DRPG_LOG_LEVEL": "DEBUG",
             "DRPG_USE_CHECKSUMS": "true",
             "DRPG_DRY_RUN": "true",
+            "DRPG_COMPATIBILITY_MODE": "true",
         }
 
         with mock.patch.dict(cmd.environ, env):
@@ -30,6 +31,7 @@ class ParseCliTest(TestCase):
         self.assertEqual(config.log_level, env["DRPG_LOG_LEVEL"])
         self.assertTrue(config.use_checksums)
         self.assertTrue(config.dry_run)
+        self.assertTrue(config.compatibility_mode)
 
 
 class SignalHandlerTest(TestCase):

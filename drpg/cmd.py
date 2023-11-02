@@ -75,6 +75,12 @@ def _parse_cli(args: CliArgs | None = None) -> Config:
         default=environ.get("DRPG_DRY_RUN", "false").lower() == "true",
         help="Determine what should be downloaded, but do not download it. Defaults to false",
     )
+    parser.add_argument(
+        "--compatibility-mode",
+        action="store_true",
+        default=environ.get("DRPG_COMPATIBILITY_MODE", "false").lower() == "true",
+        help="Name files and directories the way that DriveThruRPG's client app does.",
+    )
 
     return parser.parse_args(args, namespace=Config())
 

@@ -137,10 +137,12 @@ def _normalize_path_part(part: str, compatibility_mode: bool) -> str:
     the names. One is the drpg way, and the other is the DriveThruRPG way.
 
     Normalization algorithm for DriveThruRPG's client:
-    1. Replace any of the characters <>&#;(),!+: with "_"
+    1. Replace any of the characters <>/&#;(),!+:& with "_"
     # NOTE: the DTRPG client's algorithm may just be to replace anything that's not
     # alphanumeric or a space. But the above characters are the only ones I have seen
     # with my own eyes.
+    2. Replace repeated whitespace with a single space
+    # NOTE: I don't know for sure that ^^^^ is how their client handles it. I'm guessing.
 
     Normalization algorithm for drpg:
     1. Unescape any HTML-escaped characters (for example, convert &nbsp; to a space)
@@ -151,7 +153,8 @@ def _normalize_path_part(part: str, compatibility_mode: bool) -> str:
 
     if compatibility_mode:
         separator = "_"
-        part = re.sub(r'[<>&#;(),!+:&]', separator, part)
+        part = re.sub(r'[<>/&#;(),!+:&]', separator, part)
+        part = re.sub(r"\s+", " ", part)
     else:
         separator = " - "
         part = html.unescape(part)

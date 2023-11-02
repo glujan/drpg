@@ -238,23 +238,16 @@ class DrpgSyncTest(TestCase):
 
 
 class EscapePathTest(TestCase):
-    def test_escapes_invalid_characters(self):
-        self.assert_removes_invalid_characters("/")
 
     def test_escapes_invalid_windows_characters(self):
-        # TODO: is it true that Windows can't handle : in a filename?
-        # I'd like to allow colons, and it works on macOS and Linux
+        # TODO: Windows can't handle : in a filename, but macOS and Linux can
         self.assert_removes_invalid_characters(r'<>:"/\|?*')
-
-    # TODO: make one version of this for compatibility mode and one
-    def test_strips_invalid_characters(self):
-        name = "<name>"
-        self.assertEqual(drpg.sync._normalize_path_part(name), "name")
 
     def test_substitue_whitespaces(self):
         for whitespace in string.whitespace:
             name = f"some{whitespace}name"
-            self.assertEqual(drpg.sync._normalize_path_part(name), "some name")
+            self.assertEqual(drpg.sync._normalize_path_part(name, False), "some name")
+            self.assertEqual(drpg.sync._normalize_path_part(name, True), "some name")
 
     def test_normalize_path_part(self):
         """
@@ -265,22 +258,26 @@ class EscapePathTest(TestCase):
         # test cases like pytest does. Instead, we'll just loop through this table of expectations.
         test_data = [
             # drpg - fabricated names for the test
-            ["less<than", False, "less - than"],
-            ["two -  - to one", False, "two - to one"],
-            ["squash   \tme", False, "squash me"],
-            [" trim ", False, "trim"],
-
-            # drpg with compatibility mode off - These are actual product names
-            ["Game Designers&#039; Workshop (GDW)", False, "Game Designers' Workshop (GDW)"],
-            ["The Eyes of Winter (Holiday Adventure)", False, "The Eyes of Winter (Holiday Adventure)"],
-            ["Not So Fast, Billy Ray!", False, "Not So Fast, Billy Ray!"],
-            ["SAWS+ Character Sheet for Pathfinder", False, "SAWS+ Character Sheet for Pathfinder"],
-            ["Tabletop Gaming Guide to: Vikings", False, "Tabletop Gaming Guide to: Vikings"],
-            ["Fast & Light", False, "Fast & Light"],
-            ["1,000+ Forgotten Magical Items Volume I (Weapons & Armor)", False,
-             "1,000+ Forgotten Magical Items Volume I (Weapons & Armor)"],
+            # ["<name>", False, "name"],
+            # ["No/slash", False, "No - slash"],
+            # ["less<than", False, "less - than"],
+            # ["two -  - to one", False, "two - to one"],
+            # ["squash   \tme", False, "squash me"],
+            # [" trim ", False, "trim"],
+            #
+            # # drpg with compatibility mode off - These are actual product names
+            # ["Game Designers&#039; Workshop (GDW)", False, "Game Designers' Workshop (GDW)"],
+            # ["The Eyes of Winter (Holiday Adventure)", False, "The Eyes of Winter (Holiday Adventure)"],
+            # ["Not So Fast, Billy Ray!", False, "Not So Fast, Billy Ray!"],
+            # ["SAWS+ Character Sheet for Pathfinder", False, "SAWS+ Character Sheet for Pathfinder"],
+            # ["Tabletop Gaming Guide to: Vikings", False, "Tabletop Gaming Guide to: Vikings"],
+            # ["Fast & Light", False, "Fast & Light"],
+            # ["1,000+ Forgotten Magical Items Volume I (Weapons & Armor)", False,
+            #  "1,000+ Forgotten Magical Items Volume I (Weapons & Armor)"],
 
             # compatibility mode - fabricated names for the test
+            # ["<name>", True, "_name_"],
+            ["No/slash", True, "No_slash"],
             ["less<than", True, "less_than"],  # This is hypothetical
 
             # compatibility mode (DTRPG client) - These are all actual product names

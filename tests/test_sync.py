@@ -241,6 +241,8 @@ class EscapePathTest(TestCase):
 
     def test_escapes_invalid_windows_characters(self):
         # TODO: Windows can't handle : in a filename, but macOS and Linux can
+        # This explains what characters are not allowed in filenames on Windows:
+        # https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file#naming-conventions
         self.assert_removes_invalid_characters(r'<>:"/\|?*')
 
     def test_substitue_whitespaces(self):

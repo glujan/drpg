@@ -137,28 +137,29 @@ def _normalize_path_part(part: str, compatibility_mode: bool) -> str:
     the names. One is the drpg way, and the other is the DriveThruRPG way.
 
     Normalization algorithm for DriveThruRPG's client:
-    1. Replace any of the characters <>/&#;(),!+:& with "_"
-    # NOTE: the DTRPG client's algorithm may just be to replace anything that's not
-    # alphanumeric or a space. But the above characters are the only ones I have seen
-    # with my own eyes.
+    1. Replace any characters that are not alphanumeric, period, or space with "_"
     2. Replace repeated whitespace with a single space
-    # NOTE: I don't know for sure that ^^^^ is how their client handles it. I'm guessing.
+    # NOTE: I don't know for sure that step 2 is how their client handles it. I'm guessing.
 
     Normalization algorithm for drpg:
     1. Unescape any HTML-escaped characters (for example, convert &nbsp; to a space)
-    2. Replace any of the characters <>"/|?& with " - " (previously, drpg removed colon)
+    2. Replace any of the characters <>:"/\|?* with " - "
     3. Replace any repeated " - " separators with a single " - "
     4. Replace repeated whitespace with a single space
+
+    For background, this explains what characters are not allowed in filenames on Windows:
+    https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file#naming-conventions
+    Since Windows is the lowest common denominator, we use its restrictions on all platforms.
     """
 
     if compatibility_mode:
         separator = "_"
-        part = re.sub(r'[<>/&#;(),!+:&]', separator, part)
+        part = re.sub(r'[^a-zA-Z0-9.\s]', separator, part)
         part = re.sub(r"\s+", " ", part)
     else:
         separator = " - "
         part = html.unescape(part)
-        part = re.sub(r'[<>"/\\|?*]', separator, part).strip(separator)
+        part = re.sub(r'[<>:"/\\|?*]', separator, part).strip(separator)
         part = re.sub(f"({separator})+", separator, part)
         part = re.sub(r"\s+", " ", part)
     return part

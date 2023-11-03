@@ -239,12 +239,6 @@ class DrpgSyncTest(TestCase):
 
 class EscapePathTest(TestCase):
 
-    def test_escapes_invalid_windows_characters(self):
-        # TODO: Windows can't handle : in a filename, but macOS and Linux can
-        # This explains what characters are not allowed in filenames on Windows:
-        # https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file#naming-conventions
-        self.assert_removes_invalid_characters(r'<>:"/\|?*')
-
     def test_substitue_whitespaces(self):
         for whitespace in string.whitespace:
             name = f"some{whitespace}name"
@@ -272,13 +266,14 @@ class EscapePathTest(TestCase):
             ["The Eyes of Winter (Holiday Adventure)", False, "The Eyes of Winter (Holiday Adventure)"],
             ["Not So Fast, Billy Ray!", False, "Not So Fast, Billy Ray!"],
             ["SAWS+ Character Sheet for Pathfinder", False, "SAWS+ Character Sheet for Pathfinder"],
-            ["Tabletop Gaming Guide to: Vikings", False, "Tabletop Gaming Guide to: Vikings"],
+            ["Tabletop Gaming Guide to: Vikings", False, "Tabletop Gaming Guide to - Vikings"],
             ["Fast & Light", False, "Fast & Light"],
             ["1,000+ Forgotten Magical Items Volume I (Weapons & Armor)", False,
              "1,000+ Forgotten Magical Items Volume I (Weapons & Armor)"],
 
             # compatibility mode - fabricated names for the test
-            # ["<name>", True, "_name_"],
+            ["<name>", True, "_name_"],
+            ["<>:\"/\\|?*", True, "_________"],
             ["No/slash", True, "No_slash"],
             ["less<than", True, "less_than"],  # This is hypothetical
 

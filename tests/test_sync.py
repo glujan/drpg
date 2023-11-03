@@ -247,8 +247,9 @@ class EscapePathTest(TestCase):
 
     def test_normalize_path_part(self):
         """
-        Make sure that filenames and directory names use UTF-8 character instead of escape codes.
-        For example, "Game Designers&#039; Workshop (GDW)" should become "Game Designers' Workshop (GDW)"
+        Make sure that filenames and directory names use UTF-8 character instead of
+        escape codes. For example, "Game Designers&#039; Workshop (GDW)" should
+        become "Game Designers' Workshop (GDW)"
         """
         # It's a pity that Python unittest doesn't have built-in support for parameterized
         # test cases like pytest does. Instead, we'll just loop through this table of expectations.
@@ -263,7 +264,8 @@ class EscapePathTest(TestCase):
 
             # drpg with compatibility mode off - These are actual product names
             ["Game Designers&#039; Workshop (GDW)", False, "Game Designers' Workshop (GDW)"],
-            ["The Eyes of Winter (Holiday Adventure)", False, "The Eyes of Winter (Holiday Adventure)"],
+            ["The Eyes of Winter (Holiday Adventure)", False,
+             "The Eyes of Winter (Holiday Adventure)"],
             ["Not So Fast, Billy Ray!", False, "Not So Fast, Billy Ray!"],
             ["SAWS+ Character Sheet for Pathfinder", False, "SAWS+ Character Sheet for Pathfinder"],
             ["Tabletop Gaming Guide to: Vikings", False, "Tabletop Gaming Guide to - Vikings"],
@@ -279,7 +281,8 @@ class EscapePathTest(TestCase):
 
             # compatibility mode (DTRPG client) - These are all actual product names
             ["Game Designers&#039; Workshop (GDW)", True, "Game Designers__039_ Workshop _GDW_"],
-            ["The Eyes of Winter (Holiday Adventure)", True, "The Eyes of Winter _Holiday Adventure_"],
+            ["The Eyes of Winter (Holiday Adventure)", True,
+             "The Eyes of Winter _Holiday Adventure_"],
             ["Not So Fast, Billy Ray!", True, "Not So Fast_ Billy Ray_"],
             ["SAWS+ Character Sheet for Pathfinder", True, "SAWS_ Character Sheet for Pathfinder"],
             ["Tabletop Gaming Guide to: Vikings", True, "Tabletop Gaming Guide to_ Vikings"],

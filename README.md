@@ -29,6 +29,26 @@ Because of the nature of using an undocumented API, this software may break
 without a notice. Version number indicates a year and a month when the software
 was proved to be working with a real DriveThruRPG account.
 
+### File name compatibility
+
+The DriveThruRPG client does some interesting things with the names of directories.
+For example, if you buy a product from publisher "Game Designers' Workshop (GDW)"
+the DriveThruRPG client app will download it to a directory with the unwieldy name
+"Game Designers__039_ Workshop _GDW_".
+
+By default, `drpg` gives directories more user friendly name. In the example above,
+the directory would be "Game Designers' Workshop (GDW)". However, this causes a
+problem if you intend to try to manage the same e-book library using both `drpg` and
+the DriveThruRPG client app. When you run the former, you'll get a friendly name,
+then when you run the latter it will download all the same files again and put them
+in a directory with the unfriendly name.
+
+You can use the command line option `--compatibility-mode` to make `drpg` use the
+same naming scheme for files and directories as the DriveThruRPG client. We have
+also done our best to imitate DriveThruRPG's bugs while in `--compatibility-mode`
+but I'm sure there are some we missed.
+
+
 ### Advanced options
 
 You can change where your files will be downloaded by using `--library-path

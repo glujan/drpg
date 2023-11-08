@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import functools
+import html
 import logging
 import re
 from datetime import datetime, timedelta
@@ -22,7 +23,6 @@ if TYPE_CHECKING:  # pragma: no cover
 
     NoneCallable = Callable[..., None]
     Decorator = Callable[[NoneCallable], NoneCallable]
-
 
 _checksum_time_format = "%Y-%m-%d %H:%M:%S"
 logger = logging.getLogger("drpg")
@@ -51,6 +51,7 @@ class DrpgSync:
         self._use_checksums = config.use_checksums
         self._library_path = config.library_path
         self._dry_run = config.dry_run
+        self._compatibility_mode = config.compatibility_mode
         self._api = DrpgApi(config.token)
 
     def sync(self) -> None:
@@ -120,17 +121,48 @@ class DrpgSync:
         return False
 
     def _file_path(self, product: Product, item: DownloadItem) -> Path:
-        publishers_name = _escape_path_part(product.get("publishers_name", "Others"))
-        product_name = _escape_path_part(product["products_name"])
-        item_name = _escape_path_part(item["filename"])
+        publishers_name = _normalize_path_part(
+            product.get("publishers_name", "Others"), self._compatibility_mode
+        )
+        product_name = _normalize_path_part(product["products_name"], self._compatibility_mode)
+        item_name = _normalize_path_part(item["filename"], self._compatibility_mode)
         return self._library_path / publishers_name / product_name / item_name
 
 
-def _escape_path_part(part: str) -> str:
-    separator = " - "
-    part = re.sub(r'[<>:"/\\|?*]', separator, part).strip(separator)
-    part = re.sub(f"({separator})+", separator, part)
-    part = re.sub(r"\s+", " ", part)
+def _normalize_path_part(part: str, compatibility_mode: bool) -> str:
+    """
+    Strip out unwanted characters in parts of the path to the downloaded file representing
+    publisher's name, product name, and item name.
+    """
+
+    # There are two algorithms for normalizing names. One is the drpg way, and the other
+    # is the DriveThruRPG way.
+    #
+    # Normalization algorithm for DriveThruRPG's client:
+    # 1. Replace any characters that are not alphanumeric, period, or space with "_"
+    # 2. Replace repeated whitespace with a single space
+    # # NOTE: I don't know for sure that step 2 is how their client handles it. I'm guessing.
+    #
+    # Normalization algorithm for drpg:
+    # 1. Unescape any HTML-escaped characters (for example, convert &nbsp; to a space)
+    # 2. Replace any of the characters <>:"/\|?* with " - "
+    # 3. Replace any repeated " - " separators with a single " - "
+    # 4. Replace repeated whitespace with a single space
+    #
+    # For background, this explains what characters are not allowed in filenames on Windows:
+    # https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file#naming-conventions
+    # Since Windows is the lowest common denominator, we use its restrictions on all platforms.
+
+    if compatibility_mode:
+        separator = "_"
+        part = re.sub(r"[^a-zA-Z0-9.\s]", separator, part)
+        part = re.sub(r"\s+", " ", part)
+    else:
+        separator = " - "
+        part = html.unescape(part)
+        part = re.sub(r'[<>:"/\\|?*]', separator, part).strip(separator)
+        part = re.sub(f"({separator})+", separator, part)
+        part = re.sub(r"\s+", " ", part)
     return part
 
 

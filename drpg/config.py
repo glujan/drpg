@@ -11,3 +11,4 @@ class Config:
     use_checksums: bool
     log_level: str
     dry_run: bool
+    compatibility_mode: bool

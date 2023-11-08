@@ -32,7 +32,7 @@ was proved to be working with a real DriveThruRPG account.
 ### File name compatibility
 
 The DriveThruRPG client does some interesting things with the names of directories.
-For example, if you buy a product from publisher "Game Designers' Workshop (GDW)" 
+For example, if you buy a product from publisher "Game Designers' Workshop (GDW)"
 the DriveThruRPG client app will download it to a directory with the unwieldy name
 "Game Designers__039_ Workshop _GDW_".
 

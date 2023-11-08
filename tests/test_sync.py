@@ -231,7 +231,6 @@ class DrpgSyncTest(TestCase):
 
 
 class EscapePathTest(TestCase):
-
     def test_substitue_whitespaces(self):
         for whitespace in string.whitespace:
             name = f"some{whitespace}name"
@@ -254,39 +253,51 @@ class EscapePathTest(TestCase):
             ["two -  - to one", False, "two - to one"],
             ["squash   \tme", False, "squash me"],
             [" trim ", False, "trim"],
-
             # drpg with compatibility mode off - These are actual product names
             ["Game Designers&#039; Workshop (GDW)", False, "Game Designers' Workshop (GDW)"],
-            ["The Eyes of Winter (Holiday Adventure)", False,
-             "The Eyes of Winter (Holiday Adventure)"],
+            [
+                "The Eyes of Winter (Holiday Adventure)",
+                False,
+                "The Eyes of Winter (Holiday Adventure)",
+            ],
             ["Not So Fast, Billy Ray!", False, "Not So Fast, Billy Ray!"],
             ["SAWS+ Character Sheet for Pathfinder", False, "SAWS+ Character Sheet for Pathfinder"],
             ["Tabletop Gaming Guide to: Vikings", False, "Tabletop Gaming Guide to - Vikings"],
             ["Fast & Light", False, "Fast & Light"],
-            ["1,000+ Forgotten Magical Items Volume I (Weapons & Armor)", False,
-             "1,000+ Forgotten Magical Items Volume I (Weapons & Armor)"],
-
+            [
+                "1,000+ Forgotten Magical Items Volume I (Weapons & Armor)",
+                False,
+                "1,000+ Forgotten Magical Items Volume I (Weapons & Armor)",
+            ],
             # compatibility mode - fabricated names for the test
             ["<name>", True, "_name_"],
-            ["<>:\"/\\|?*", True, "_________"],
+            ['<>:"/\\|?*', True, "_________"],
             ["No/slash", True, "No_slash"],
             ["less<than", True, "less_than"],  # This is hypothetical
-
             # compatibility mode (DTRPG client) - These are all actual product names
             ["Game Designers&#039; Workshop (GDW)", True, "Game Designers__039_ Workshop _GDW_"],
-            ["The Eyes of Winter (Holiday Adventure)", True,
-             "The Eyes of Winter _Holiday Adventure_"],
+            [
+                "The Eyes of Winter (Holiday Adventure)",
+                True,
+                "The Eyes of Winter _Holiday Adventure_",
+            ],
             ["Not So Fast, Billy Ray!", True, "Not So Fast_ Billy Ray_"],
             ["SAWS+ Character Sheet for Pathfinder", True, "SAWS_ Character Sheet for Pathfinder"],
             ["Tabletop Gaming Guide to: Vikings", True, "Tabletop Gaming Guide to_ Vikings"],
             ["Fast & Light", True, "Fast _ Light"],
-            ["1,000+ Forgotten Magical Items Volume I (Weapons & Armor)", True,
-             "1_000_ Forgotten Magical Items Volume I _Weapons _ Armor_"],
+            [
+                "1,000+ Forgotten Magical Items Volume I (Weapons & Armor)",
+                True,
+                "1_000_ Forgotten Magical Items Volume I _Weapons _ Armor_",
+            ],
         ]
 
         for row in test_data:
-            self.assertEqual(drpg.sync._normalize_path_part(row[0], row[1]), row[2],
-                             msg=f"With compatibility mode {row[1]}")
+            self.assertEqual(
+                drpg.sync._normalize_path_part(row[0], row[1]),
+                row[2],
+                msg=f"With compatibility mode {row[1]}",
+            )
 
     def assert_removes_invalid_characters(self, characters):
         name = f"some{characters}name"

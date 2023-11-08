@@ -105,15 +105,15 @@ class DrpgSync:
 
         remote_time = datetime.fromisoformat(item["last_modified"]).utctimetuple()
         local_time = (
-                datetime.fromtimestamp(path.stat().st_mtime) + timedelta(seconds=timezone)
+            datetime.fromtimestamp(path.stat().st_mtime) + timedelta(seconds=timezone)
         ).utctimetuple()
         if remote_time > local_time:
             return True
 
         if (
-                self._use_checksums
-                and (checksum := _newest_checksum(item))
-                and md5(path.read_bytes()).hexdigest() != checksum
+            self._use_checksums
+            and (checksum := _newest_checksum(item))
+            and md5(path.read_bytes()).hexdigest() != checksum
         ):
             return True
 
@@ -121,8 +121,9 @@ class DrpgSync:
         return False
 
     def _file_path(self, product: Product, item: DownloadItem) -> Path:
-        publishers_name = _normalize_path_part(product.get("publishers_name", "Others"),
-                                               self._compatibility_mode)
+        publishers_name = _normalize_path_part(
+            product.get("publishers_name", "Others"), self._compatibility_mode
+        )
         product_name = _normalize_path_part(product["products_name"], self._compatibility_mode)
         item_name = _normalize_path_part(item["filename"], self._compatibility_mode)
         return self._library_path / publishers_name / product_name / item_name
@@ -154,7 +155,7 @@ def _normalize_path_part(part: str, compatibility_mode: bool) -> str:
 
     if compatibility_mode:
         separator = "_"
-        part = re.sub(r'[^a-zA-Z0-9.\s]', separator, part)
+        part = re.sub(r"[^a-zA-Z0-9.\s]", separator, part)
         part = re.sub(r"\s+", " ", part)
     else:
         separator = " - "

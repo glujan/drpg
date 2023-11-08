@@ -90,9 +90,7 @@ class DrpgSync:
                 )
                 return
 
-            file_response = httpx.get(
-                url_data["download_url"], timeout=30.0, follow_redirects=True
-            )
+            file_response = httpx.get(url_data["download_url"], timeout=30.0, follow_redirects=True)
 
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(file_response.content)

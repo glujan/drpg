@@ -41,6 +41,9 @@ Changelog = "https://github.com/glujan/drpg/blob/master/CHANGELOG.md"
 GitHub = "https://github.com/glujan/drpg"
 Homepage = "https://github.com/glujan/drpg"
 
+[tool.black]
+line-length = 100
+
 [tool.coverage.run]
 branch = true
 include = ["drpg/*"]

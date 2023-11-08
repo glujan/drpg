@@ -42,9 +42,7 @@ class FileTaskResponse:
 
     @classmethod
     def preparing(cls, file_task_id):
-        instance = cls(
-            file_task_id, "https://example.com/file.pdf", "Preparing download...", []
-        )
+        instance = cls(file_task_id, "https://example.com/file.pdf", "Preparing download...", [])
         return dataclasses.asdict(instance)
 
 

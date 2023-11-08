@@ -100,9 +100,7 @@ class DrpgApi:
             if resp.is_success:
                 expected_keys = {"progress", "file_tasks_id", "download_url"}
                 if isinstance(message, dict) and expected_keys.issubset(message.keys()):
-                    logger.debug(
-                        "Got download url for %s - %s: %s", product_id, item_id, message
-                    )
+                    logger.debug("Got download url for %s - %s: %s", product_id, item_id, message)
                 else:
                     logger.debug(
                         "Got unexpected message when getting download url for %s - %s: %s",
@@ -110,9 +108,7 @@ class DrpgApi:
                         item_id,
                         message,
                     )
-                    raise self.FileTaskException(
-                        self.FileTaskException.UNEXPECTED_RESPONSE
-                    )
+                    raise self.FileTaskException(self.FileTaskException.UNEXPECTED_RESPONSE)
             else:
                 logger.debug(
                     "Could not get download link for %s - %s: %s",

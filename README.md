@@ -40,9 +40,9 @@ can turn it on by using `--use-checksums`.
 You can change a log level by using `--log-level=<YOUR_LOG_LEVEL>`. Choices are
 DEBUG, INFO, WARNING, ERROR, CRITICAL.
 
-You can do a "dry run" of the app by specifying `--dry-run`. This will determine 
-all the digital content you have purchased, but instead of downloading each file 
-it will print one line of information to show what file *would* have been downloaded 
+You can do a "dry run" of the app by specifying `--dry-run`. This will determine
+all the digital content you have purchased, but instead of downloading each file
+it will print one line of information to show what file *would* have been downloaded
 if the `--dry-run` flag wasn't on. Use this if you want to test out the app without
 taking the time to download anything.
 

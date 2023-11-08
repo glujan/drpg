@@ -293,11 +293,12 @@ class EscapePathTest(TestCase):
         ]
 
         for row in test_data:
-            self.assertEqual(
-                drpg.sync._normalize_path_part(row[0], row[1]),
-                row[2],
-                msg=f"With compatibility mode {row[1]}",
-            )
+            with self.subTest(msg=row[0]):
+                self.assertEqual(
+                    drpg.sync._normalize_path_part(row[0], row[1]),
+                    row[2],
+                    msg=f"With compatibility mode {row[1]}",
+                )
 
     def assert_removes_invalid_characters(self, characters):
         name = f"some{characters}name"

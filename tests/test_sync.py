@@ -120,14 +120,10 @@ class DrpgSyncNeedDownloadTest(TestCase):
 
     def dummy_item(self, date):
         file_md5 = md5(self.file_content).hexdigest()
-        return dataclasses.asdict(
-            FileResponse("file.pdf", date.isoformat(), [Checksum(file_md5)])
-        )
+        return dataclasses.asdict(FileResponse("file.pdf", date.isoformat(), [Checksum(file_md5)]))
 
     def dummy_product(self, *files):
-        return dataclasses.asdict(
-            ProductResponse("Test rule book", "Test Publishing", files=files)
-        )
+        return dataclasses.asdict(ProductResponse("Test rule book", "Test Publishing", files=files))
 
 
 class DrpgSyncFilePathTest(TestCase):
@@ -164,9 +160,7 @@ class DrpgSyncProcessItemTest(TestCase):
     @mock.patch("drpg.api.DrpgApi.file_task", return_value=file_task)
     @respx.mock(base_url=DrpgApi.API_URL)
     def test_writes_to_file(self, _, m_file_path, respx_mock):
-        respx_mock.get(self.file_task["download_url"]).respond(
-            200, content=self.content
-        )
+        respx_mock.get(self.file_task["download_url"]).respond(200, content=self.content)
 
         path = m_file_path.return_value
         type(path).parent = mock.PropertyMock(return_value=PathMock())
@@ -217,8 +211,7 @@ class DrpgSyncTest(TestCase):
         files_count = 5
         products_count = 3
         customer_products_mock.return_value = [
-            self.dummy_product(f"Rule Book {i}", files_count)
-            for i in range(products_count)
+            self.dummy_product(f"Rule Book {i}", files_count) for i in range(products_count)
         ]
         self.sync.sync()
         self.assertEqual(process_item_mock.call_count, files_count * products_count)

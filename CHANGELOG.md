@@ -1,8 +1,13 @@
 # Changelog
 
-## 2023.6.12-dev
+## 2023.11.9-dev
+
+## 2023.11.8
+* add `--dry-run` mode
 * support httpx 0.20-0.24+
 * support Python 3.8-3.12.0-beta.2
+* move to pyproject.toml
+* run `pre-commit` in CI
 
 ## 2023.5.11
 * fixed a bug that interrupted some downloads (#34)

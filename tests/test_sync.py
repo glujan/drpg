@@ -231,7 +231,7 @@ class DrpgSyncTest(TestCase):
 
 
 class EscapePathTest(TestCase):
-    def test_substitue_whitespaces(self):
+    def test_substitute_whitespaces(self):
         for whitespace in string.whitespace:
             name = f"some{whitespace}name"
             self.assertEqual(drpg.sync._normalize_path_part(name, False), "some name")

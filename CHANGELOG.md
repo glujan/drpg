@@ -1,6 +1,9 @@
 # Changelog
 
-## 2023.11.9-dev
+## 2023.11.11-dev
+
+## 2023.11.10
+* add `--compatibility-mode`
 
 ## 2023.11.8
 * add `--dry-run` mode

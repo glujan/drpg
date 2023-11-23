@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2023.11.11-dev
+* support httpx 0.20-0.25+
 
 ## 2023.11.10
 * add `--compatibility-mode`

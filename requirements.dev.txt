@@ -85,7 +85,7 @@ tomli==2.0.1
     #   tox
 tox==4.11.3
     # via drpg (pyproject.toml)
-virtualenv==20.24.7
+virtualenv==20.25.0
     # via tox
 wheel==0.41.3
     # via pip-tools

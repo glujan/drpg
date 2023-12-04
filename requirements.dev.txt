@@ -87,7 +87,7 @@ tox==4.11.3
     # via drpg (pyproject.toml)
 virtualenv==20.25.0
     # via tox
-wheel==0.41.3
+wheel==0.42.0
     # via pip-tools
 zipp==3.17.0
     # via importlib-metadata

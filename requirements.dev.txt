@@ -55,7 +55,7 @@ packaging==23.2
     #   tox
 pip-tools==7.3.0
     # via drpg (pyproject.toml)
-platformdirs==4.0.0
+platformdirs==4.1.0
     # via
     #   tox
     #   virtualenv

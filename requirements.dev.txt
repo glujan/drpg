@@ -83,7 +83,7 @@ tomli==2.0.1
     #   pyproject-api
     #   pyproject-hooks
     #   tox
-tox==4.11.3
+tox==4.11.4
     # via drpg (pyproject.toml)
 virtualenv==20.25.0
     # via tox

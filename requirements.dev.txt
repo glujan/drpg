@@ -22,7 +22,7 @@ colorama==0.4.6
     # via tox
 coverage[toml]==7.3.3
     # via drpg (pyproject.toml)
-distlib==0.3.7
+distlib==0.3.8
     # via virtualenv
 exceptiongroup==1.2.0
     # via anyio

@@ -4,7 +4,7 @@
 #
 #    pip-compile --output-file=requirements.txt --resolver=backtracking pyproject.toml
 #
-anyio==4.1.0
+anyio==4.2.0
     # via httpx
 certifi==2023.11.17
     # via

@@ -4,7 +4,7 @@
 #
 #    pip-compile --extra=dev --output-file=requirements.dev.txt --resolver=backtracking pyproject.toml
 #
-anyio==4.1.0
+anyio==4.2.0
     # via httpx
 build==1.0.3
     # via pip-tools

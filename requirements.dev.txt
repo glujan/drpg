@@ -44,7 +44,7 @@ idna==3.6
     # via
     #   anyio
     #   httpx
-importlib-metadata==7.0.0
+importlib-metadata==7.0.1
     # via build
 mccabe==0.7.0
     # via flake8

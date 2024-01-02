@@ -1,7 +1,7 @@
 # Changelog
 
-## 2023.11.11-dev
-* support httpx 0.20-0.25+
+## Unreleased
+* support httpx 0.20-0.26+
 * support Python 3.8-3.12
 * test on Python 3.13 alpha
 

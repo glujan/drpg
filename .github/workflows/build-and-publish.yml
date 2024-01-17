@@ -1,4 +1,4 @@
-name: Publish to PyPI
+name: Build package and publish to PyPI
 on:
   push:
     branches:

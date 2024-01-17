@@ -1,6 +1,8 @@
 # Changelog
 
 ## Unreleased
+
+## 2024.1.17
 * support httpx 0.20-0.26+
 * support Python 3.8-3.12
 * test on Python 3.13 alpha

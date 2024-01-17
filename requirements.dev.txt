@@ -30,7 +30,7 @@ filelock==3.13.1
     # via
     #   tox
     #   virtualenv
-flake8==6.1.0
+flake8==7.0.0
     # via drpg (pyproject.toml)
 h11==0.14.0
     # via httpcore
@@ -63,7 +63,7 @@ pluggy==1.3.0
     # via tox
 pycodestyle==2.11.1
     # via flake8
-pyflakes==3.1.0
+pyflakes==3.2.0
     # via flake8
 pyproject-api==1.6.1
     # via tox
@@ -83,8 +83,10 @@ tomli==2.0.1
     #   pyproject-api
     #   pyproject-hooks
     #   tox
-tox==4.12.0
+tox==4.12.1
     # via drpg (pyproject.toml)
+typing-extensions==4.9.0
+    # via anyio
 virtualenv==20.25.0
     # via tox
 wheel==0.42.0

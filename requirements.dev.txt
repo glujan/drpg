@@ -20,7 +20,7 @@ click==8.1.7
     # via pip-tools
 colorama==0.4.6
     # via tox
-coverage[toml]==7.4.1
+coverage[toml]==7.4.3
     # via drpg (pyproject.toml)
 distlib==0.3.8
     # via virtualenv
@@ -71,7 +71,7 @@ pyproject-hooks==1.0.0
     # via build
 respx==0.20.2
     # via drpg (pyproject.toml)
-sniffio==1.3.0
+sniffio==1.3.1
     # via
     #   anyio
     #   httpx
@@ -83,7 +83,7 @@ tomli==2.0.1
     #   pyproject-api
     #   pyproject-hooks
     #   tox
-tox==4.12.1
+tox==4.13.0
     # via drpg (pyproject.toml)
 typing-extensions==4.9.0
     # via anyio

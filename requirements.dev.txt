@@ -20,7 +20,7 @@ click==8.1.7
     # via pip-tools
 colorama==0.4.6
     # via tox
-coverage[toml]==7.4.1
+coverage[toml]==7.4.3
     # via drpg (pyproject.toml)
 distlib==0.3.8
     # via virtualenv

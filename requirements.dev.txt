@@ -83,7 +83,7 @@ tomli==2.0.1
     #   pyproject-api
     #   pyproject-hooks
     #   tox
-tox==4.12.1
+tox==4.13.0
     # via drpg (pyproject.toml)
 typing-extensions==4.9.0
     # via anyio

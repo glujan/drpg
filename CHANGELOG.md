@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+* support httpx 0.20-0.27+
 
 ## 2024.1.17
 * support httpx 0.20-0.26+

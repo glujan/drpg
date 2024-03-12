@@ -26,6 +26,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "build",
     "coverage[toml]",
     "flake8",
     "respx",

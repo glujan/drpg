@@ -38,3 +38,6 @@ jobs:
     - name: Test with dependency matrix
       run: |
        tox
+    - name: Test build sdist and wheel packages
+      run: |
+        python -m build --sdist --wheel --outdir dist/

@@ -1,8 +1,6 @@
 name: Build package and publish to PyPI
 on:
   push:
-    branches:
-      - master
     tags:
       - 20* # Covers tags until year 2100.
 
@@ -20,7 +18,7 @@ jobs:
         cache: 'pip'
     - name: Install pypa/build
       run: |
-        python -m pip install --user build
+        python -m pip install --user build -c requirements.dev.txt
     - name: Build
       run: |
         python -m build --sdist --wheel --outdir dist/

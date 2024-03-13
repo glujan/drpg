@@ -32,6 +32,7 @@ dev = [
     "respx",
     "pip-tools",
     "tox",
+    "tox-gh-actions",
 ]
 
 [project.scripts]

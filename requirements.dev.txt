@@ -86,6 +86,10 @@ tomli==2.0.1
     #   pyproject-hooks
     #   tox
 tox==4.13.0
+    # via
+    #   drpg (pyproject.toml)
+    #   tox-gh-actions
+tox-gh-actions==3.2.0
     # via drpg (pyproject.toml)
 typing-extensions==4.9.0
     # via anyio

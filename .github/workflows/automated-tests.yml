@@ -21,10 +21,10 @@ jobs:
     - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
-    - uses: pre-commit/action@v3.0.1
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'
+    - uses: pre-commit/action@v3.0.1
     - name: Install dependencies
       run: |
         pip install -r requirements.dev.txt

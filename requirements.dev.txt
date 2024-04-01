@@ -10,7 +10,7 @@ build==1.0.3
     # via
     #   drpg (pyproject.toml)
     #   pip-tools
-cachetools==5.3.2
+cachetools==5.3.3
     # via tox
 certifi==2024.2.2
     # via

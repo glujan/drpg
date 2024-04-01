@@ -50,7 +50,7 @@ importlib-metadata==7.0.1
     # via build
 mccabe==0.7.0
     # via flake8
-packaging==23.2
+packaging==24.0
     # via
     #   build
     #   pyproject-api

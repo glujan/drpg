@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from enum import Enum
+from itertools import chain
 from time import sleep
 from typing import TYPE_CHECKING
 
@@ -9,6 +10,8 @@ import httpx
 
 if TYPE_CHECKING:  # pragma: no cover
     from typing import Iterable, Iterator, TypedDict
+
+    from typing_extensions import NotRequired
 
     class TokenResponse(TypedDict):
         customers_id: str
@@ -22,6 +25,13 @@ if TYPE_CHECKING:  # pragma: no cover
         products_id: str
         publishers_name: str
         products_name: str
+
+        date_purchased: NotRequired[str]
+        products_filesize: NotRequired[str]
+        products_thumbnail100: NotRequired[str]
+        cover_url: NotRequired[str]
+        is_archived: NotRequired[str]
+
         files: list[DownloadItem]
 
     class DownloadItem(TypedDict):
@@ -39,12 +49,13 @@ logger = logging.getLogger("drpg")
 
 
 class ProductField(str, Enum):
+    products_id = "products_id"
+    publishers_name = "publishers_name"
     products_name = "products_name"
-    cover_url = "cover_url"
     date_purchased = "date_purchased"
     products_filesize = "products_filesize"
-    publishers_name = "publishers_name"
     products_thumbnail100 = "products_thumbnail100"
+    cover_url = "cover_url"
     is_archived = "is_archived"
 
 
@@ -83,15 +94,13 @@ class DrpgApi:
         return login_data
 
     def customer_products(
-        self,
-        per_page: int = 1,
-        fields: Iterable[ProductField] = (ProductField.publishers_name, ProductField.products_name),
+        self, per_page: int = 1, extra_fields: Iterable[ProductField] = tuple()
     ) -> Iterator[Product]:
         """List all not archived customer's products."""
 
         page = 1
 
-        while result := self._product_page(page, per_page, fields):
+        while result := self._product_page(page, per_page, extra_fields):
             logger.debug("Yielding products page %d", page)
             yield from result
             page += 1
@@ -144,7 +153,7 @@ class DrpgApi:
         return data
 
     def _product_page(
-        self, page: int, per_page: int, fields: Iterable[ProductField]
+        self, page: int, per_page: int, extra_fields: Iterable[ProductField]
     ) -> list[Product]:
         """
         List products from a specified page.
@@ -156,6 +165,11 @@ class DrpgApi:
             files.filename, files.last_modified, files.checksums, files.raw_filesize,
             filters.filters_name, filters.filters_id, filters.parent_id
         """
+        required_fields = (
+            ProductField.products_id,
+            ProductField.publishers_name,
+            ProductField.products_name,
+        )
 
         return self._client.get(
             f"/api/v1/customers/{self._customer_id}/products",
@@ -164,7 +178,7 @@ class DrpgApi:
                 "page": page,
                 "per_page": per_page,
                 "include_archived": 0,
-                "fields": "".join(field.value for field in fields),
+                "fields": ",".join({field.value for field in chain(required_fields, extra_fields)}),
                 "embed": "files.filename,files.last_modified,files.checksums",
             },
         ).json()["message"]

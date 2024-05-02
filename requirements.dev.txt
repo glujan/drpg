@@ -6,7 +6,7 @@
 #
 anyio==4.2.0
     # via httpx
-build==1.0.3
+build==1.2.1
     # via
     #   drpg (pyproject.toml)
     #   pip-tools

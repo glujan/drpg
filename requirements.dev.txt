@@ -55,7 +55,7 @@ packaging==24.0
     #   build
     #   pyproject-api
     #   tox
-pip-tools==7.3.0
+pip-tools==7.4.1
     # via drpg (pyproject.toml)
 platformdirs==4.2.0
     # via

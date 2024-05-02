@@ -95,7 +95,7 @@ typing-extensions==4.9.0
     # via anyio
 virtualenv==20.25.1
     # via tox
-wheel==0.42.0
+wheel==0.43.0
     # via pip-tools
 zipp==3.17.0
     # via importlib-metadata

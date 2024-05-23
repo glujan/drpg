@@ -300,10 +300,6 @@ class EscapePathTest(TestCase):
                     msg=f"With compatibility mode {row[1]}",
                 )
 
-    def assert_removes_invalid_characters(self, characters):
-        name = f"some{characters}name"
-        self.assertEqual(drpg.sync._normalize_path_part(name), "some - name")
-
 
 class NewestChecksumTest(TestCase):
     def test_no_checksums(self):

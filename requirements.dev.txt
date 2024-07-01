@@ -4,7 +4,7 @@
 #
 #    pip-compile --extra=dev --output-file=requirements.dev.txt
 #
-anyio==4.2.0
+anyio==4.4.0
     # via httpx
 build==1.2.1
     # via

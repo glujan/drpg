@@ -85,7 +85,7 @@ tomli==2.0.1
     #   pyproject-api
     #   pyproject-hooks
     #   tox
-tox==4.14.2
+tox==4.15.1
     # via
     #   drpg (pyproject.toml)
     #   tox-gh-actions

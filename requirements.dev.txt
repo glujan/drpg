@@ -26,7 +26,7 @@ coverage[toml]==7.5.4
     # via drpg (pyproject.toml)
 distlib==0.3.8
     # via virtualenv
-exceptiongroup==1.2.1
+exceptiongroup==1.2.2
     # via anyio
 filelock==3.14.0
     # via

@@ -8,11 +8,13 @@ updates:
       - dependency-type: "all"
     versioning-strategy: increase-if-necessary
     groups:
-      prod-dependencies:
+      all:
         patterns:
           - "*"
         update-types:
           - "major"
+          - "minor"
+          - "patch"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

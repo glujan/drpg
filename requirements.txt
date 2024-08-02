@@ -10,7 +10,7 @@ certifi==2024.7.4
     # via
     #   httpcore
     #   httpx
-exceptiongroup==1.2.1
+exceptiongroup==1.2.2
     # via anyio
 h11==0.14.0
     # via httpcore

@@ -28,7 +28,7 @@ distlib==0.3.8
     # via virtualenv
 exceptiongroup==1.2.2
     # via anyio
-filelock==3.14.0
+filelock==3.15.4
     # via
     #   tox
     #   virtualenv

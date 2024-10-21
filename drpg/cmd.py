@@ -81,6 +81,12 @@ def _parse_cli(args: CliArgs | None = None) -> Config:
         default=environ.get("DRPG_COMPATIBILITY_MODE", "false").lower() == "true",
         help="Name files and directories the way that DriveThruRPG's client app does.",
     )
+    parser.add_argument(
+        "--omit-publisher",
+        action="store_true",
+        default=environ.get("DRPG_OMIT_PUBLISHER", "false").lower() == "true",
+        help="Omit the publisher name in the target path.",
+    )
 
     return parser.parse_args(args, namespace=Config())
 

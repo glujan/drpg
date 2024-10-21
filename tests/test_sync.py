@@ -22,6 +22,7 @@ class dummy_config:
     library_path = Path("./test_library")
     dry_run = False
     compatibility_mode = False
+    omit_publisher = False
 
 
 PathMock = partial(mock.Mock, spec=Path)

@@ -12,3 +12,4 @@ class Config:
     log_level: str
     dry_run: bool
     compatibility_mode: bool
+    omit_publisher: bool

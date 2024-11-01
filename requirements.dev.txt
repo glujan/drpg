@@ -67,7 +67,7 @@ pycodestyle==2.11.1
     # via flake8
 pyflakes==3.2.0
     # via flake8
-pyproject-api==1.6.1
+pyproject-api==1.8.0
     # via tox
 pyproject-hooks==1.0.0
     # via build

@@ -4,7 +4,7 @@
 * add `--omit-publisher`
 * support Python 3.9-3.13
 * test on Python 3.14 alpha
-* support httpx 0.20-0.27+
+* support httpx 0.21-0.27+
 
 ## 2024.1.17
 * support Python 3.8-3.12

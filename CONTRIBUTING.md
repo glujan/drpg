@@ -22,7 +22,7 @@ As a first step, you need to create a new virtualenv and install development
 dependencies:
 
 ```bash
-python3.8 -m venv venv
+python3.9 -m venv venv
 source venv/bin/activate
 pip install -r requirements.dev.txt
 

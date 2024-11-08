@@ -4,7 +4,7 @@
 
 ## Installation
 
-This script runs with Python 3.8 and newer.
+This script runs with Python 3.9 and newer.
 
 You can install dRPG from PyPI:
 ```bash

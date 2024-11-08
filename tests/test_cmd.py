@@ -1,9 +1,8 @@
-import sys
 from inspect import currentframe
 from os.path import expandvars
 from pathlib import Path
 from signal import SIGTERM
-from unittest import TestCase, mock, skipIf
+from unittest import TestCase, mock
 
 from drpg import cmd
 
@@ -36,7 +35,6 @@ class ParseCliTest(TestCase):
         self.assertTrue(config.compatibility_mode)
         self.assertTrue(config.omit_publisher)
 
-    @skipIf(sys.version_info < (3, 9), "Python 3.8 EOL")
     @mock.patch("drpg.cmd.argparse.ArgumentParser.error")
     def test_compability_mutually_exclusive_group(self, error_mock):
         cmd._parse_cli(["--compatibility-mode", "--omit-publisher", "--token", "mock_token"])

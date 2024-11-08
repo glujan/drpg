@@ -1,7 +1,7 @@
 import dataclasses
 from datetime import datetime
 from random import randint
-from typing import List, Optional
+from typing import Optional
 
 import drpg
 import drpg.api
@@ -28,7 +28,7 @@ class FileTaskResponse:
     file_tasks_id: int
     download_url: Optional[str]
     progress: Optional[str]
-    checksums: List[Checksum]
+    checksums: list[Checksum]
 
     @classmethod
     def complete(cls, file_task_id, checksums_count=1):
@@ -50,7 +50,7 @@ class FileTaskResponse:
 class FileResponse:
     filename: str
     last_modified: str
-    checksums: List[Checksum]
+    checksums: list[Checksum]
     bundle_id: str = dataclasses.field(default_factory=_random_id)
 
 
@@ -58,5 +58,5 @@ class FileResponse:
 class ProductResponse:
     products_name: str
     publishers_name: str
-    files: List[FileResponse]
+    files: list[FileResponse]
     products_id: str = dataclasses.field(default_factory=_random_id)

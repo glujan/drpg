@@ -1,7 +1,7 @@
-minimum_pre_commit_version: "2.20.0"
+minimum_pre_commit_version: "3.5.0"
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: "v4.5.0"
+  rev: "v5.0.0"
   hooks:
     - id: check-ast
     - id: check-case-conflict
@@ -9,26 +9,26 @@ repos:
     - id: end-of-file-fixer
     - id: trailing-whitespace
 - repo: https://github.com/asottile/pyupgrade
-  rev: v3.15.0
+  rev: v3.19.0
   hooks:
     - id: pyupgrade
-      args: [--py38-plus]
+      args: [--py39-plus]
 - repo: https://github.com/PyCQA/isort
-  rev: "5.12.0"
+  rev: "5.13.2"
   hooks:
     - id: isort
       args: ["--profile=black"]
 - repo: https://github.com/psf/black
-  rev: "23.11.0"
+  rev: "24.10.0"
   hooks:
     - id: black
-      args: ["--target-version=py38"]
+      args: ["--target-version=py39"]
 - repo: https://github.com/PyCQA/flake8
-  rev: "6.1.0"
+  rev: "7.1.1"
   hooks:
     - id: flake8
 - repo: https://github.com/pre-commit/mirrors-mypy
-  rev: "v1.6.1"
+  rev: "v1.13.0"
   hooks:
     - id: mypy
       args: ["--ignore-missing-imports", "--python-version=3.10"]

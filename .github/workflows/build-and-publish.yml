@@ -18,7 +18,7 @@ jobs:
         cache: 'pip'
     - name: Install pypa/build
       run: |
-        python -m pip install --user build -c requirements.dev.txt
+        python -m pip install -r requirements.dev.txt
     - name: Build
       run: |
         python -m build --sdist --wheel --outdir dist/

@@ -77,7 +77,7 @@ def _parse_cli(args: CliArgs | None = None) -> Config:
     )
 
     compability_group = parser.add_mutually_exclusive_group()
-    
+
     compability_group.add_argument(
         "--compatibility-mode",
         action="store_true",

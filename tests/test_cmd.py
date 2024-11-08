@@ -37,8 +37,9 @@ class ParseCliTest(TestCase):
 
     @mock.patch("drpg.cmd.argparse.ArgumentParser.error")
     def test_compability_mutually_exclusive_group(self, error_mock):
-        cmd._parse_cli(['--compatibility-mode', '--omit-publisher', '--token', 'mock_token'])
+        cmd._parse_cli(["--compatibility-mode", "--omit-publisher", "--token", "mock_token"])
         error_mock.assert_called()
+
 
 class SignalHandlerTest(TestCase):
     @mock.patch("drpg.cmd.sys.exit")

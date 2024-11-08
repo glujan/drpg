@@ -52,6 +52,7 @@ class DrpgSync:
         self._library_path = config.library_path
         self._dry_run = config.dry_run
         self._compatibility_mode = config.compatibility_mode
+        self._omit_publisher = config.omit_publisher
         self._api = DrpgApi(config.token)
 
     def sync(self) -> None:
@@ -126,7 +127,10 @@ class DrpgSync:
         )
         product_name = _normalize_path_part(product["products_name"], self._compatibility_mode)
         item_name = _normalize_path_part(item["filename"], self._compatibility_mode)
-        return self._library_path / publishers_name / product_name / item_name
+        if not self._omit_publisher:
+            return self._library_path / publishers_name / product_name / item_name
+        else:
+            return self._library_path / product_name / item_name
 
 
 def _normalize_path_part(part: str, compatibility_mode: bool) -> str:

@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING
 import httpx
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Iterator, TypedDict
+    from collections.abc import Iterator
+    from typing import TypedDict
 
     class TokenResponse(TypedDict):
         customers_id: str

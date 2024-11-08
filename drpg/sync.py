@@ -127,7 +127,7 @@ class DrpgSync:
         )
         product_name = _normalize_path_part(product["products_name"], self._compatibility_mode)
         item_name = _normalize_path_part(item["filename"], self._compatibility_mode)
-        if  not self._omit_publisher:
+        if not self._omit_publisher:
             return self._library_path / publishers_name / product_name / item_name
         else:
             return self._library_path / product_name / item_name

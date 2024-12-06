@@ -160,7 +160,7 @@ class DrpgSyncProcessItemTest(TestCase):
 
     @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock())
     @mock.patch("drpg.api.DrpgApi.file_task", return_value=file_task)
-    @respx.mock(base_url=DrpgApi.API_URL)
+    @respx.mock(base_url=DrpgApi.API_URL, using="httpx")
     def test_writes_to_file(self, _, m_file_path, respx_mock):
         respx_mock.get(self.file_task["download_url"]).respond(200, content=self.content)
 

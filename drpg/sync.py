@@ -79,14 +79,14 @@ class DrpgSync:
         if self._dry_run:
             logger.info("DRY RUN - would have downloaded file: %s", path)
         else:
-            logger.info("Processing: %s - %s", product["products_name"], item["filename"])
+            logger.info("Processing: %s - %s", product["name"], item["filename"])
 
             try:
-                url_data = self._api.file_task(product["products_id"], item["bundle_id"])
+                url_data = self._api.file_task(product["productId"], item["index"])
             except self._api.FileTaskException:
                 logger.warning(
                     "Could not download product: %s - %s",
-                    product["products_name"],
+                    product["name"],
                     item["filename"],
                 )
                 return
@@ -104,7 +104,7 @@ class DrpgSync:
         if not path.exists():
             return True
 
-        remote_time = datetime.fromisoformat(item["last_modified"]).utctimetuple()
+        remote_time = datetime.fromisoformat(product["fileLastModified"]).utctimetuple()
         local_time = (
             datetime.fromtimestamp(path.stat().st_mtime) + timedelta(seconds=timezone)
         ).utctimetuple()
@@ -118,14 +118,14 @@ class DrpgSync:
         ):
             return True
 
-        logger.debug("Up to date: %s - %s", product["products_name"], item["filename"])
+        logger.debug("Up to date: %s - %s", product["name"], item["filename"])
         return False
 
     def _file_path(self, product: Product, item: DownloadItem) -> Path:
         publishers_name = _normalize_path_part(
-            product.get("publishers_name", "Others"), self._compatibility_mode
+            product.get("publisher", {}).get("name", "Others"), self._compatibility_mode
         )
-        product_name = _normalize_path_part(product["products_name"], self._compatibility_mode)
+        product_name = _normalize_path_part(product["name"], self._compatibility_mode)
         item_name = _normalize_path_part(item["filename"], self._compatibility_mode)
         if not self._omit_publisher:
             return self._library_path / publishers_name / product_name / item_name
@@ -174,5 +174,5 @@ def _newest_checksum(item: DownloadItem) -> str | None:
     return max(
         item["checksums"],
         default={"checksum": None},
-        key=lambda s: datetime.strptime(s["checksum_date"], _checksum_time_format),
+        key=lambda s: datetime.strptime(s["checksumDate"], _checksum_time_format),
     )["checksum"]

@@ -11,7 +11,9 @@ if TYPE_CHECKING:  # pragma: no cover
     from typing import TypedDict
 
     class TokenResponse(TypedDict):
-        customers_id: str
+        token: str
+        refreshToken: str
+        refreshTokenTTL: int
 
     class FileTasksResponse(TypedDict):
         file_tasks_id: str
@@ -19,29 +21,36 @@ if TYPE_CHECKING:  # pragma: no cover
         download_url: str
 
     class Product(TypedDict):
-        products_id: str
-        publishers_name: str
-        products_name: str
+        productId: str
+        publisher: Publisher
+        name: str
+        bundleId: int
+        orderProductId: str  # Used to generate download file
+        fileLastModified: str
         files: list[DownloadItem]
 
+    class Publisher(TypedDict):
+        name: str
+
     class DownloadItem(TypedDict):
+        index: int
         filename: str
-        last_modified: str
-        bundle_id: str
+        orderProductDownloadId: int
         checksums: list[Checksum]
 
     class Checksum(TypedDict):
         checksum: str
-        checksum_date: str
+        checksumDate: str
 
 
 logger = logging.getLogger("drpg")
+JSON_MIME = "application/json"
 
 
 class DrpgApi:
     """Low-level REST API client for DriveThruRPG"""
 
-    API_URL = "https://www.drivethrurpg.com"
+    API_URL = "https://api.drivethrurpg.com/api/vBeta/"
 
     class FileTaskException(Exception):
         UNEXPECTED_RESPONSE = "Got response with unexpected schema"
@@ -50,29 +59,31 @@ class DrpgApi:
     def __init__(self, api_key: str):
         self._client = httpx.Client(base_url=self.API_URL, timeout=30.0)
         self._api_key = api_key
-        self._customer_id = None
+        self._customer_id = None  # TODO Unused?
 
     def token(self) -> TokenResponse:
         """
         Update access token and customer's details based on an API key.
-
-        Available "fields" values: first_name, last_name, customers_id
         """
         resp = self._client.post(
-            "/api/v1/token",
-            params={"fields": "customers_id"},
-            headers={"Authorization": f"Bearer {self._api_key}"},
+            "auth_key",
+            params={"applicationKey": self._api_key},
+            headers={
+                "Content-Type": JSON_MIME,
+                "Accept": JSON_MIME,
+                "Accept-Encoding": "gzip, deflate",
+                "User-Agent": "Mozilla/5.0",
+            },
         )
 
         if resp.status_code == httpx.codes.UNAUTHORIZED:
             raise AttributeError("Provided token is invalid")
 
-        login_data = resp.json()["message"]
-        self._customer_id = login_data["customers_id"]
-        self._client.headers["Authorization"] = f"Bearer {login_data['access_token']}"
+        login_data: TokenResponse = resp.json()
+        self._client.headers["Authorization"] = login_data["token"]
         return login_data
 
-    def customer_products(self, per_page: int = 100) -> Iterator[Product]:
+    def customer_products(self, per_page: int = 50) -> Iterator[Product]:
         """List all not archived customer's products."""
 
         page = 1
@@ -82,18 +93,24 @@ class DrpgApi:
             yield from result
             page += 1
 
-    def file_task(self, product_id: str, item_id: str) -> FileTasksResponse:
+    def file_task(self, product_id: str, item_id: int) -> FileTasksResponse:
         """
         Generate a download link and metadata for a product's item.
-
-        Available "fields" values: products_id, bundle_id, checksums.
         """
-        task_params = {"fields": "download_url,progress"}
-        resp = self._client.post(
-            "/api/v1/file_tasks",
+        task_params = {
+            "siteId": 10,  # Magic number, probably something like storefront ID
+            "index": 0,
+            "getChecksums": 0,  # Official clients defaults to 1
+        }
+        resp = self._client.post(  # TODO Outdated
+            f"order_products/{product_id}/prepare",
             params=task_params,
-            data={"products_id": product_id, "bundle_id": item_id},
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            headers={
+                "Content-Type": JSON_MIME,
+                "Accept": JSON_MIME,
+                "Accept-Encoding": "gzip, deflate",
+                "User-Agent": "Mozilla/5.0",
+            },
         )
 
         def _parse_message(resp):
@@ -124,7 +141,7 @@ class DrpgApi:
             logger.debug("Waiting for download link for: %s - %s", product_id, item_id)
             sleep(3)
             task_id = data["file_tasks_id"]
-            resp = self._client.get(f"/api/v1/file_tasks/{task_id}", params=task_params)
+            resp = self._client.get(f"file_tasks/{task_id}", params=task_params)  # TODO Outdated
 
         logger.debug("Got download link for: %s - %s", product_id, item_id)
         return data
@@ -132,23 +149,22 @@ class DrpgApi:
     def _product_page(self, page: int, per_page: int) -> list[Product]:
         """
         List products from a specified page.
-
-        Available "fields" values:
-            products_name, cover_url, date_purchased, products_filesize,
-            publishers_name, products_thumbnail100
-        Available "embed" values:
-            files.filename, files.last_modified, files.checksums, files.raw_filesize,
-            filters.filters_name, filters.filters_id, filters.parent_id
         """
 
         return self._client.get(
-            f"/api/v1/customers/{self._customer_id}/products",
-            headers={"Content-Type": "application/json"},
-            params={
-                "page": page,
-                "per_page": per_page,
-                "include_archived": 0,
-                "fields": "publishers_name,products_name",
-                "embed": "files.filename,files.last_modified,files.checksums",
+            "order_products",
+            headers={
+                "Content-Type": JSON_MIME,
+                "Accept": JSON_MIME,
+                "Accept-Encoding": "gzip, deflate",
+                "User-Agent": "Mozilla/5.0",
             },
-        ).json()["message"]
+            params={
+                "getChecksum": 1,
+                "getFilters": 0,  # Official clients defaults to 1
+                "page": page,
+                "pageSize": per_page,
+                "library": 1,
+                "archived": 0,
+            },
+        ).json()

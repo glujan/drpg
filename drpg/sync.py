@@ -51,13 +51,16 @@ class DrpgSync:
         self._library_path = config.library_path
         self._dry_run = config.dry_run
         self._compatibility_mode = config.compatibility_mode
+        self._validate = config.validate
         self._omit_publisher = config.omit_publisher
         self._api = DrpgApi(config.token)
 
     def sync(self) -> None:
         """Download all new, updated and not yet synced items to a sync directory."""
 
+        logger.info("Authenticating")
         self._api.token()
+        logger.info("Fetching a list of products")
         process_item_args = (
             (product, item)
             for product in self._api.customer_products()
@@ -100,8 +103,19 @@ class DrpgSync:
                 },
             )
 
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(file_response.content)
+            if (
+                self._validate
+                and (checksum := _newest_checksum(item))
+                and md5(file_response.content).hexdigest() != checksum
+            ):
+                logger.error(
+                    "ERROR: Invalid checksum for %s - %s, skipping saving file",
+                    product["name"],
+                    item["filename"],
+                )
+            else:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(file_response.content)
 
     def _need_download(self, product: Product, item: DownloadItem) -> bool:
         """Specify whether or not the item needs to be downloaded."""

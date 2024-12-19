@@ -19,6 +19,7 @@ from .fixtures import FileTaskResponseFixture
 class dummy_config:
     token = "private-token"
     use_checksums = False
+    validate = False
     library_path = Path("./test_library")
     dry_run = False
     compatibility_mode = False

@@ -19,6 +19,7 @@ class ParseCliTest(TestCase):
             "DRPG_LIBRARY_PATH": "env/path",
             "DRPG_LOG_LEVEL": "DEBUG",
             "DRPG_USE_CHECKSUMS": "true",
+            "DRPG_VALIDATE": "true",
             "DRPG_DRY_RUN": "true",
             "DRPG_COMPATIBILITY_MODE": "true",
             "DRPG_OMIT_PUBLISHER": "true",
@@ -31,6 +32,7 @@ class ParseCliTest(TestCase):
         self.assertEqual(config.library_path, Path(env["DRPG_LIBRARY_PATH"]))
         self.assertEqual(config.log_level, env["DRPG_LOG_LEVEL"])
         self.assertTrue(config.use_checksums)
+        self.assertTrue(config.validate)
         self.assertTrue(config.dry_run)
         self.assertTrue(config.compatibility_mode)
         self.assertTrue(config.omit_publisher)

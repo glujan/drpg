@@ -1,8 +1,11 @@
+import logging
 from inspect import currentframe
 from os.path import expandvars
 from pathlib import Path
 from signal import SIGTERM
 from unittest import TestCase, mock
+
+from httpx import URL
 
 from drpg import cmd
 
@@ -106,3 +109,45 @@ class MacDefaultDirTest(DefaultDirTest, TestCase):
     def test_default_dir(self):
         default_dir = cmd._default_dir()
         self.assertEqual(default_dir.parent, Path.cwd())
+
+
+class ApplicationKeyFilterTest(TestCase):
+    def test_matching_record(self):
+        secret = "123456789012345"
+        record = logging.LogRecord(
+            name=__name__,
+            level=logging.INFO,
+            pathname="dummy.py",
+            lineno=10,
+            msg="Http request: %s %s %s",
+            args=(
+                "POST",
+                URL(f"https://example.org/?test=1&applicationKey={secret}&dummy=max"),
+                "irrelevant",
+            ),
+            exc_info=None,
+        )
+
+        self.assertIn(secret, record.getMessage())
+        cmd.application_key_filter(record)
+        self.assertNotIn(secret, record.getMessage())
+
+    def test_not_matching_record(self):
+        secret = "123456789012345"
+        record = logging.LogRecord(
+            name=__name__,
+            level=logging.INFO,
+            pathname="dummy.py",
+            lineno=10,
+            msg="Http request: %s %s %s",
+            args=(
+                "POST",
+                URL(f"https://example.org/?test=1&secret={secret}&dummy=max"),
+                "irrelevant",
+            ),
+            exc_info=None,
+        )
+
+        self.assertIn(secret, record.getMessage())
+        cmd.application_key_filter(record)
+        self.assertIn(secret, record.getMessage())

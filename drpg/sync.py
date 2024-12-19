@@ -24,7 +24,6 @@ if TYPE_CHECKING:  # pragma: no cover
     NoneCallable = Callable[..., None]
     Decorator = Callable[[NoneCallable], NoneCallable]
 
-_checksum_time_format = "%Y-%m-%d %H:%M:%S"  # TODO It is now ISO format
 logger = logging.getLogger("drpg")
 
 
@@ -124,6 +123,7 @@ class DrpgSync:
             and (checksum := _newest_checksum(item))
             and md5(path.read_bytes()).hexdigest() != checksum
         ):
+            logger.debug("Checksum %s for %s", checksum, product["name"])
             return True
 
         logger.info("Up to date: %s - %s", product["name"], item["filename"])
@@ -180,7 +180,7 @@ def _normalize_path_part(part: str, compatibility_mode: bool) -> str:
 
 def _newest_checksum(item: DownloadItem) -> str | None:
     return max(
-        item["checksums"],
+        item["checksums"] or [],
         default={"checksum": None},
-        key=lambda s: datetime.strptime(s["checksumDate"], _checksum_time_format),
+        key=lambda s: datetime.fromisoformat(s["checksumDate"]),
     )["checksum"]

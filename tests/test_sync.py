@@ -325,4 +325,4 @@ class NewestChecksumTest(TestCase):
 
 
 def _checksum_date_now():
-    return datetime.now().strftime(drpg.sync._checksum_time_format)
+    return datetime.now().isoformat()

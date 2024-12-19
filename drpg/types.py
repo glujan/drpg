@@ -18,7 +18,7 @@ class Product(TypedDict):
     name: str
     bundleId: int
     orderProductId: int
-    fileLastModified: str  # TODO ISO format
+    fileLastModified: str  # ISO format
     files: list["DownloadItem"]
 
 
@@ -34,4 +34,4 @@ class DownloadItem(TypedDict):
 
 class Checksum(TypedDict):
     checksum: str
-    checksumDate: str  # TODO ISO format
+    checksumDate: str  # ISO format

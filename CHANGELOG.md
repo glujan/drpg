@@ -1,5 +1,8 @@
 # Changelog
 
+## 2024.12.19
+* rewrite client to use new API
+
 ## 2024.11.8
 * add `--omit-publisher`
 * support Python 3.9-3.13

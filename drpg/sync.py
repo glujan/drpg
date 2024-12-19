@@ -18,13 +18,12 @@ if TYPE_CHECKING:  # pragma: no cover
     from pathlib import Path
     from typing import Any, Callable
 
-    from drpg.api import DownloadItem, Product
     from drpg.config import Config
+    from drpg.types import DownloadItem, Product
 
     NoneCallable = Callable[..., None]
     Decorator = Callable[[NoneCallable], NoneCallable]
 
-_checksum_time_format = "%Y-%m-%d %H:%M:%S"
 logger = logging.getLogger("drpg")
 
 
@@ -79,19 +78,27 @@ class DrpgSync:
         if self._dry_run:
             logger.info("DRY RUN - would have downloaded file: %s", path)
         else:
-            logger.info("Processing: %s - %s", product["products_name"], item["filename"])
+            logger.info("Processing: %s - %s", product["name"], item["filename"])
 
             try:
-                url_data = self._api.file_task(product["products_id"], item["bundle_id"])
+                url_data = self._api.file_task(product["orderProductId"], item["index"])
             except self._api.FileTaskException:
                 logger.warning(
                     "Could not download product: %s - %s",
-                    product["products_name"],
+                    product["name"],
                     item["filename"],
                 )
                 return
 
-            file_response = httpx.get(url_data["download_url"], timeout=30.0, follow_redirects=True)
+            file_response = httpx.get(
+                url_data["url"],
+                timeout=30.0,
+                follow_redirects=True,
+                headers={
+                    "Accept-Encoding": "gzip, deflate",
+                    "User-Agent": "Mozilla/5.0",
+                },
+            )
 
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(file_response.content)
@@ -104,7 +111,7 @@ class DrpgSync:
         if not path.exists():
             return True
 
-        remote_time = datetime.fromisoformat(item["last_modified"]).utctimetuple()
+        remote_time = datetime.fromisoformat(product["fileLastModified"]).utctimetuple()
         local_time = (
             datetime.fromtimestamp(path.stat().st_mtime) + timedelta(seconds=timezone)
         ).utctimetuple()
@@ -116,16 +123,17 @@ class DrpgSync:
             and (checksum := _newest_checksum(item))
             and md5(path.read_bytes()).hexdigest() != checksum
         ):
+            logger.debug("Checksum %s for %s", checksum, product["name"])
             return True
 
-        logger.debug("Up to date: %s - %s", product["products_name"], item["filename"])
+        logger.info("Up to date: %s - %s", product["name"], item["filename"])
         return False
 
     def _file_path(self, product: Product, item: DownloadItem) -> Path:
         publishers_name = _normalize_path_part(
-            product.get("publishers_name", "Others"), self._compatibility_mode
+            product.get("publisher", {}).get("name", "Others"), self._compatibility_mode
         )
-        product_name = _normalize_path_part(product["products_name"], self._compatibility_mode)
+        product_name = _normalize_path_part(product["name"], self._compatibility_mode)
         item_name = _normalize_path_part(item["filename"], self._compatibility_mode)
         if not self._omit_publisher:
             return self._library_path / publishers_name / product_name / item_name
@@ -172,7 +180,7 @@ def _normalize_path_part(part: str, compatibility_mode: bool) -> str:
 
 def _newest_checksum(item: DownloadItem) -> str | None:
     return max(
-        item["checksums"],
+        item["checksums"] or [],
         default={"checksum": None},
-        key=lambda s: datetime.strptime(s["checksum_date"], _checksum_time_format),
+        key=lambda s: datetime.fromisoformat(s["checksumDate"]),
     )["checksum"]

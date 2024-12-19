@@ -48,7 +48,7 @@ line-length = 100
 
 [tool.coverage.run]
 branch = true
-include = ["drpg/*"]
+include = ["drpg/*","tests/*"]
 omit = [".ropeproject", "venv"]
 
 [tool.coverage.report]

@@ -13,7 +13,7 @@ from pathlib import Path
 from traceback import format_exception
 from typing import TYPE_CHECKING
 
-from drpg import DrpgSync
+import drpg
 from drpg.config import Config
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -30,13 +30,16 @@ def run() -> None:
     config = _parse_cli()
     _setup_logger(config.log_level)
 
-    DrpgSync(config).sync()
+    drpg.DrpgSync(config).sync()
 
 
 def _parse_cli(args: CliArgs | None = None) -> Config:
     parser = argparse.ArgumentParser(
         prog="drpg",
-        description="Download and keep up to date your purchases from DriveThruRPG",
+        description=f"""
+            Download and keep up to date your purchases from DriveThruRPG.
+            Version {drpg.__version__}.
+        """,
         epilog="""
             Instead of parameters you can use environment variables. Prefix
             an option with DRPG_, capitalize it and replace '-' with '_'.
@@ -62,7 +65,13 @@ def _parse_cli(args: CliArgs | None = None) -> Config:
         "-c",
         action="store_true",
         default=environ.get("DRPG_USE_CHECKSUMS", "false").lower() == "true",
-        help="Calculate checksums for all files. Slower but possibly more precise",
+        help="Decide if a file needs to be downloaded based on checksums. Slower but more precise",
+    )
+    parser.add_argument(
+        "--validate",
+        action="store_true",
+        default=environ.get("DRPG_VALIDATE", "false").lower() == "true",
+        help="Validate downloads by calculating checksums",
     )
     parser.add_argument(
         "--log-level",

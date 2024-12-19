@@ -51,13 +51,16 @@ class DrpgSync:
         self._library_path = config.library_path
         self._dry_run = config.dry_run
         self._compatibility_mode = config.compatibility_mode
+        self._validate = config.validate
         self._omit_publisher = config.omit_publisher
         self._api = DrpgApi(config.token)
 
     def sync(self) -> None:
         """Download all new, updated and not yet synced items to a sync directory."""
 
+        logger.info("Authenticating")
         self._api.token()
+        logger.info("Fetching products list")
         process_item_args = (
             (product, item)
             for product in self._api.customer_products()
@@ -100,8 +103,19 @@ class DrpgSync:
                 },
             )
 
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(file_response.content)
+            if (
+                self._validate
+                and (checksum := _newest_checksum(item))
+                and md5(file_response.content).hexdigest() != checksum
+            ):
+                logger.error(
+                    "ERROR: Invalid checksum for %s - %s, skipping saving file",
+                    product["name"],
+                    item["filename"],
+                )
+            else:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(file_response.content)
 
     def _need_download(self, product: Product, item: DownloadItem) -> bool:
         """Specify whether or not the item needs to be downloaded."""
@@ -109,6 +123,11 @@ class DrpgSync:
         path = self._file_path(product, item)
 
         if not path.exists():
+            logger.debug(
+                "Needs download: %s - %s: local file does not exist",
+                product["name"],
+                item["filename"],
+            )
             return True
 
         remote_time = datetime.fromisoformat(product["fileLastModified"]).utctimetuple()
@@ -116,6 +135,11 @@ class DrpgSync:
             datetime.fromtimestamp(path.stat().st_mtime) + timedelta(seconds=timezone)
         ).utctimetuple()
         if remote_time > local_time:
+            logger.debug(
+                "Needs download: %s - %s: local file is outdated",
+                product["name"],
+                item["filename"],
+            )
             return True
 
         if (
@@ -123,7 +147,11 @@ class DrpgSync:
             and (checksum := _newest_checksum(item))
             and md5(path.read_bytes()).hexdigest() != checksum
         ):
-            logger.debug("Checksum %s for %s", checksum, product["name"])
+            logger.debug(
+                "Needs download: %s - %s: unmatching checksum",
+                product["name"],
+                item["filename"],
+            )
             return True
 
         logger.info("Up to date: %s - %s", product["name"], item["filename"])
@@ -135,10 +163,10 @@ class DrpgSync:
         )
         product_name = _normalize_path_part(product["name"], self._compatibility_mode)
         item_name = _normalize_path_part(item["filename"], self._compatibility_mode)
-        if not self._omit_publisher:
-            return self._library_path / publishers_name / product_name / item_name
-        else:
+        if self._omit_publisher:
             return self._library_path / product_name / item_name
+        else:
+            return self._library_path / publishers_name / product_name / item_name
 
 
 def _normalize_path_part(part: str, compatibility_mode: bool) -> str:

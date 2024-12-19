@@ -16,7 +16,6 @@ class Product(TypedDict):
     productId: str
     publisher: "Publisher"
     name: str
-    bundleId: int
     orderProductId: int
     fileLastModified: str  # ISO format
     files: list["DownloadItem"]

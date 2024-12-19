@@ -8,7 +8,7 @@ from httpx import Response
 
 from drpg import api
 
-from .responses import FileTaskResponse
+from .fixtures import FileTaskResponseFixture
 
 _api_url = urlparse(api.DrpgApi.API_URL)
 api_base_url = f"{_api_url.scheme}://{_api_url.hostname}"
@@ -79,8 +79,8 @@ class DrpgApiFileTaskTest(TestCase):
         params = urlencode({"siteId": 10, "index": 0, "getChecksums": 0})
         self.file_tasks_url = f"/api/vBeta/order_products/{self.product_id}/prepare?{params}"
 
-        self.response_preparing = FileTaskResponse.preparing(file_task_id)
-        self.response_ready = FileTaskResponse.complete(file_task_id)
+        self.response_preparing = FileTaskResponseFixture.preparing(file_task_id)
+        self.response_ready = FileTaskResponseFixture.complete(file_task_id)
 
         self.client = api.DrpgApi("token")
 
@@ -88,7 +88,7 @@ class DrpgApiFileTaskTest(TestCase):
     def test_immiediate_download_url(self, respx_mock):
         respx_mock.post(self.file_tasks_url).respond(201, json=self.response_ready)
 
-        file_data = self.client.file_task(self.product_id, "item_id")
+        file_data = self.client.file_task(self.product_id, 0)
         self.assertEqual(file_data, self.response_ready)
 
     @mock.patch("drpg.api.sleep")
@@ -97,7 +97,7 @@ class DrpgApiFileTaskTest(TestCase):
         respx_mock.post(self.file_tasks_url).respond(201, json=self.response_preparing)
         respx_mock.get(self.file_tasks_url).respond(200, json=self.response_ready)
 
-        file_data = self.client.file_task(self.product_id, "item_id")
+        file_data = self.client.file_task(self.product_id, 0)
         self.assertEqual(file_data, self.response_ready)
 
     @tmp_respx_mock(base_url=api_base_url)
@@ -106,7 +106,7 @@ class DrpgApiFileTaskTest(TestCase):
         respx_mock.post(self.file_tasks_url).respond(400, json=dummy_400_response)
 
         with self.assertRaises(self.client.FileTaskException) as cm:
-            self.client.file_task(self.product_id, "item_id")
+            self.client.file_task(self.product_id, 0)
         self.assertTupleEqual(cm.exception.args, (self.client.FileTaskException.REQUEST_FAILED,))
 
     @tmp_respx_mock(base_url=api_base_url)
@@ -115,7 +115,7 @@ class DrpgApiFileTaskTest(TestCase):
         respx_mock.post(self.file_tasks_url).respond(201, json=dummy_unexpected_response)
 
         with self.assertRaises(self.client.FileTaskException) as cm:
-            self.client.file_task(self.product_id, "item_id")
+            self.client.file_task(self.product_id, 0)
         self.assertTupleEqual(
             cm.exception.args, (self.client.FileTaskException.UNEXPECTED_RESPONSE,)
         )
@@ -126,7 +126,7 @@ class DrpgApiFileTaskTest(TestCase):
         respx_mock.post(self.file_tasks_url).respond(201, json=dummy_unexpected_response)
 
         with self.assertRaises(self.client.FileTaskException) as cm:
-            self.client.file_task(self.product_id, "item_id")
+            self.client.file_task(self.product_id, 0)
         self.assertTupleEqual(
             cm.exception.args, (self.client.FileTaskException.UNEXPECTED_RESPONSE,)
         )

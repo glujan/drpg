@@ -14,7 +14,7 @@ import drpg.sync
 from drpg import types
 from drpg.api import DrpgApi
 
-from .responses import FileResponse, FileTaskResponse
+from .fixtures import FileResponse, FileTaskResponseFixture
 
 
 class dummy_config:
@@ -159,7 +159,7 @@ class DrpgSyncFilePathTest(TestCase):
 
 
 class DrpgSyncProcessItemTest(TestCase):
-    file_task = FileTaskResponse.complete("123")
+    file_task = FileTaskResponseFixture.complete("123")
     content = b"content"
 
     def setUp(self):

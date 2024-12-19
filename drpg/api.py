@@ -6,10 +6,12 @@ from typing import TYPE_CHECKING
 
 import httpx
 
+from drpg.types import FileTasksResponse
+
 if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Iterator
 
-    from drpg.types import FileTasksResponse, Product, TokenResponse
+    from drpg.types import Product, TokenResponse
 
 logger = logging.getLogger("drpg")
 JSON_MIME = "application/json"
@@ -38,9 +40,7 @@ class DrpgApi:
         self._api_key = api_key
 
     def token(self) -> TokenResponse:
-        """
-        Update access token based on an API key.
-        """
+        """Authenticate http client with access token based on an API key."""
         resp = self._client.post(
             "auth_key",
             params={"applicationKey": self._api_key},
@@ -64,9 +64,8 @@ class DrpgApi:
             page += 1
 
     def file_task(self, product_id: str, item_id: int) -> FileTasksResponse:
-        """
-        Generate a download link and metadata for a product's item.
-        """
+        """Generate a download link and metadata for a product's item."""
+
         task_params = {
             "siteId": 10,  # Magic number, probably something like storefront ID
             "index": 0,
@@ -77,7 +76,7 @@ class DrpgApi:
         def _parse_message(resp) -> FileTasksResponse:
             message: FileTasksResponse = resp.json()
             if resp.is_success:
-                expected_keys = {"progress", "file_tasks_id", "download_url"}  # TODO
+                expected_keys = FileTasksResponse.__required_keys__
                 if isinstance(message, dict) and expected_keys.issubset(message.keys()):
                     logger.debug("Got download url for %s - %s: %s", product_id, item_id, message)
                 else:
@@ -109,9 +108,7 @@ class DrpgApi:
         return data
 
     def _product_page(self, page: int, per_page: int) -> list[Product]:
-        """
-        List products from a specified page.
-        """
+        """List products from a specified page."""
 
         return self._client.get(
             "order_products",

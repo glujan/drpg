@@ -25,7 +25,7 @@ __all__ = ["run"]
 
 def run() -> None:
     signal.signal(signal.SIGINT, _handle_signal)
-    #  sys.excepthook = _excepthook
+    sys.excepthook = _excepthook
     config = _parse_cli()
     _setup_logger(config.log_level)
 
@@ -136,4 +136,4 @@ def _excepthook(
 ) -> None:
     logger = logging.getLogger("drpg")
     logger.error("Unexpected error occurred, stopping!")
-    logger.debug("".join(format_exception(exc_type, exc, tb)))
+    logger.info("".join(format_exception(exc_type, exc, tb)))

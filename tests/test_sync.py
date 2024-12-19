@@ -1,4 +1,3 @@
-import dataclasses
 import string
 from datetime import datetime, timedelta
 from functools import partial
@@ -14,7 +13,7 @@ import drpg.sync
 from drpg import types
 from drpg.api import DrpgApi
 
-from .fixtures import FileResponse, FileTaskResponseFixture
+from .fixtures import FileTaskResponseFixture
 
 
 class dummy_config:
@@ -123,12 +122,10 @@ class DrpgSyncNeedDownloadTest(TestCase):
 
     def dummy_item(self, date):
         file_md5 = md5(self.file_content).hexdigest()
-        return dataclasses.asdict(
-            FileResponse(
-                "file.pdf",
-                date.isoformat(),
-                [types.Checksum(checksum=file_md5, checksumDate=_checksum_date_now())],
-            )
+        return types.DownloadItem(
+            index=0,
+            filename="file.pdf",
+            checksums=[types.Checksum(checksum=file_md5, checksumDate=_checksum_date_now())],
         )
 
     def dummy_product(self, *files):
@@ -244,7 +241,7 @@ class DrpgSyncTest(TestCase):
             name=name,
             publisher=types.Publisher(name="Test Publishing"),
             files=[
-                FileResponse(f"file{i}.pdf", datetime.now().isoformat(), [])
+                types.DownloadItem(index=0, filename=f"file{i}.pdf", checksums=[])
                 for i in range(files_count)
             ],
         )

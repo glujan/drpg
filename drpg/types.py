@@ -29,7 +29,6 @@ class Publisher(TypedDict):
 class DownloadItem(TypedDict):
     index: int
     filename: str
-    orderProductDownloadId: int
     checksums: list["Checksum"]
 
 

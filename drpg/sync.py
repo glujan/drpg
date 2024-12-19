@@ -91,7 +91,15 @@ class DrpgSync:
                 )
                 return
 
-            file_response = httpx.get(url_data["url"], timeout=30.0, follow_redirects=True)
+            file_response = httpx.get(
+                url_data["url"],
+                timeout=30.0,
+                follow_redirects=True,
+                headers={
+                    "Accept-Encoding": "gzip, deflate",
+                    "User-Agent": "Mozilla/5.0",
+                },
+            )
 
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(file_response.content)
@@ -118,7 +126,7 @@ class DrpgSync:
         ):
             return True
 
-        logger.debug("Up to date: %s - %s", product["name"], item["filename"])
+        logger.info("Up to date: %s - %s", product["name"], item["filename"])
         return False
 
     def _file_path(self, product: Product, item: DownloadItem) -> Path:

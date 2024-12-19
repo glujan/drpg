@@ -3,7 +3,7 @@ from drpg.types import FileTasksResponse
 
 class FileTaskResponseFixture:
     @staticmethod
-    def complete(checksums_count=1) -> FileTasksResponse:
+    def complete() -> FileTasksResponse:
         return FileTasksResponse(
             url="https://example.com/file.pdf",
             status="Complete",

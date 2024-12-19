@@ -156,7 +156,7 @@ class DrpgSyncFilePathTest(TestCase):
 
 
 class DrpgSyncProcessItemTest(TestCase):
-    file_task = FileTaskResponseFixture.complete("123")
+    file_task = FileTaskResponseFixture.complete()
     content = b"content"
 
     def setUp(self):

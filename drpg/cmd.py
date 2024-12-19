@@ -5,6 +5,7 @@ import configparser
 import logging
 import os.path
 import platform
+import re
 import signal
 import sys
 from os import environ
@@ -117,13 +118,26 @@ def _default_dir() -> Path:
 
 def _setup_logger(level_name: str) -> None:
     level = logging.getLevelName(level_name)
+
+    if level == logging.DEBUG:
+        httpx_log_level = logging.INFO
+        format = "%(name)-8s - %(asctime)s - %(message)s"
+    else:
+        httpx_log_level = logging.WARNING
+        format = "%(message)s"
+
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(level)
+    handler.addFilter(application_key_filter)
     logging.basicConfig(
-        format="%(message)s",
+        format=format,
         handlers=[handler],
         level=level,
     )
+
+    for name in ("httpx", "httpcore"):
+        logger = logging.getLogger(name)
+        logger.setLevel(httpx_log_level)
 
 
 def _handle_signal(sig: int, frame: FrameType | None) -> None:
@@ -137,3 +151,14 @@ def _excepthook(
     logger = logging.getLogger("drpg")
     logger.error("Unexpected error occurred, stopping!")
     logger.info("".join(format_exception(exc_type, exc, tb)))
+
+
+def application_key_filter(record: logging.LogRecord):
+    try:
+        method, url, *other = record.args  # type: ignore
+        if method == "POST" and url.params.get("applicationKey"):  # type: ignore
+            url = re.sub(r"(applicationKey=)(.{10,40})", r"\1******", str(url))
+            record.args = (method, url) + tuple(other)
+    except Exception:
+        pass
+    return True

@@ -140,9 +140,6 @@ class DrpgSyncNeedDownloadTest(TestCase):
 
 
 class DrpgSyncFilePathTest(TestCase):
-    def setUp(self):
-        self.sync = drpg.DrpgSync(dummy_config)
-
     def test_product_starts_with_slash(self):
         product = {
             "name": "Rulebook - 2. ed",
@@ -150,11 +147,37 @@ class DrpgSyncFilePathTest(TestCase):
         }
         item = {"filename": "filename.pdf"}
 
-        path = self.sync._file_path(product, item)
+        path = drpg.DrpgSync(dummy_config)._file_path(product, item)
         try:
             path.relative_to(dummy_config.library_path)
         except ValueError as e:
             self.fail(e)
+
+    def test_omit_publisher(self):
+        publisher = "Unit Publishing"
+        product = {
+            "name": "Rulebook - 2. ed",
+            "publisher": {"name": publisher},
+        }
+        item = {"filename": "filename.pdf"}
+
+        config = dummy_config()
+        config.omit_publisher = True
+        path = drpg.DrpgSync(config)._file_path(product, item)
+        self.assertNotIn(publisher, str(path))
+
+    def test_not_omit_publisher(self):
+        publisher = "Unit Publishing"
+        product = {
+            "name": "Rulebook - 2. ed",
+            "publisher": {"name": publisher},
+        }
+        item = {"filename": "filename.pdf"}
+
+        config = dummy_config()
+        config.omit_publisher = False
+        path = drpg.DrpgSync(config)._file_path(product, item)
+        self.assertIn(publisher, str(path))
 
 
 class DrpgSyncProcessItemTest(TestCase):
@@ -165,14 +188,14 @@ class DrpgSyncProcessItemTest(TestCase):
         self.item = types.DownloadItem(
             index=0,
             filename="test.pdf",
-            checksums=[types.Checksum(checksum="md5", checksumDate=_checksum_date_now)],
+            checksums=[types.Checksum(checksum="md5", checksumDate=_checksum_date_now())],
         )
         self.product = types.Product(
             productId="test-product",
-            orderProductId=123,
-            name="Test rule book",
-            fileLastModified=datetime.now().isoformat(),
             publisher=types.Publisher(name="Test Publishing"),
+            name="Test rule book",
+            orderProductId=123,
+            fileLastModified=datetime.now().isoformat(),
             files=[self.item],
         )
         self.sync = drpg.DrpgSync(dummy_config)
@@ -218,6 +241,25 @@ class DrpgSyncProcessItemTest(TestCase):
             m_logger.warning.assert_called_once()
             msg, *_ = m_logger.warning.call_args[0]
             self.assertIn("Could not download product", msg)
+
+    @mock.patch("drpg.sync.logger")
+    @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock())
+    @mock.patch("drpg.api.DrpgApi.file_task", return_value=file_task)
+    def test_invalid_download(self, _file_task, _file_path, logger):
+        config = dummy_config()
+        config.validate = True
+        drpg.DrpgSync(config)._process_item(self.product, self.item)
+        logger.error.assert_called_once()
+        self.assertIn("Invalid checksum", logger.error.call_args.args[0])
+
+    @mock.patch("drpg.sync.logger")
+    @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock())
+    def test_dry_run(self, file_path, logger):
+        config = dummy_config()
+        config.dry_run = True
+        drpg.DrpgSync(config)._process_item(self.product, self.item)
+        logger.info.assert_called_once()
+        self.assertEqual(logger.info.call_args.args[1], file_path.return_value)
 
 
 class DrpgSyncTest(TestCase):
@@ -326,5 +368,5 @@ class NewestChecksumTest(TestCase):
         self.assertIsNone(checksum)
 
 
-def _checksum_date_now():
+def _checksum_date_now() -> str:
     return datetime.now().isoformat()

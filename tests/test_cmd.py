@@ -129,7 +129,7 @@ class ApplicationKeyFilterTest(TestCase):
         )
 
         self.assertIn(secret, record.getMessage())
-        cmd.application_key_filter(record)
+        self.assertTrue(cmd.application_key_filter(record))
         self.assertNotIn(secret, record.getMessage())
 
     def test_not_matching_record(self):
@@ -149,5 +149,18 @@ class ApplicationKeyFilterTest(TestCase):
         )
 
         self.assertIn(secret, record.getMessage())
-        cmd.application_key_filter(record)
+        self.assertTrue(cmd.application_key_filter(record))
         self.assertIn(secret, record.getMessage())
+
+    def test_silent_exception(self):
+        record = logging.LogRecord(
+            name=__name__,
+            level=logging.INFO,
+            pathname="dummy.py",
+            lineno=10,
+            msg="Log line without params",
+            args=None,
+            exc_info=None,
+        )
+
+        self.assertTrue(cmd.application_key_filter(record))

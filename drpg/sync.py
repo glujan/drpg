@@ -60,7 +60,7 @@ class DrpgSync:
 
         logger.info("Authenticating")
         self._api.token()
-        logger.info("Fetching a list of products")
+        logger.info("Fetching products list")
         process_item_args = (
             (product, item)
             for product in self._api.customer_products()
@@ -123,6 +123,11 @@ class DrpgSync:
         path = self._file_path(product, item)
 
         if not path.exists():
+            logger.debug(
+                "Needs download: %s - %s: local file does not exist",
+                product["name"],
+                item["filename"],
+            )
             return True
 
         remote_time = datetime.fromisoformat(product["fileLastModified"]).utctimetuple()
@@ -130,6 +135,11 @@ class DrpgSync:
             datetime.fromtimestamp(path.stat().st_mtime) + timedelta(seconds=timezone)
         ).utctimetuple()
         if remote_time > local_time:
+            logger.debug(
+                "Needs download: %s - %s: local file is outdated",
+                product["name"],
+                item["filename"],
+            )
             return True
 
         if (
@@ -137,7 +147,11 @@ class DrpgSync:
             and (checksum := _newest_checksum(item))
             and md5(path.read_bytes()).hexdigest() != checksum
         ):
-            logger.debug("Checksum %s for %s", checksum, product["name"])
+            logger.debug(
+                "Needs download: %s - %s: unmatching checksum",
+                product["name"],
+                item["filename"],
+            )
             return True
 
         logger.info("Up to date: %s - %s", product["name"], item["filename"])

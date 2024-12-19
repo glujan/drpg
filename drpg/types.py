@@ -7,11 +7,9 @@ class TokenResponse(TypedDict):
     refreshTokenTTL: int
 
 
-class FileTasksResponse(TypedDict):  # TODO Check schema
-    file_tasks_id: str
-    download_url: str
-    progress: str
-    checksums: list["Checksum"]
+class FileTasksResponse(TypedDict):
+    url: str
+    status: str
 
 
 class Product(TypedDict):
@@ -19,8 +17,8 @@ class Product(TypedDict):
     publisher: "Publisher"
     name: str
     bundleId: int
-    orderProductId: str  # Used to generate download file
-    fileLastModified: str  # TODO Check format
+    orderProductId: int
+    fileLastModified: str  # TODO ISO format
     files: list["DownloadItem"]
 
 
@@ -37,4 +35,4 @@ class DownloadItem(TypedDict):
 
 class Checksum(TypedDict):
     checksum: str
-    checksumDate: str
+    checksumDate: str  # TODO ISO format

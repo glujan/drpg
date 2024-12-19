@@ -170,6 +170,7 @@ class DrpgSyncProcessItemTest(TestCase):
         )
         self.product = types.Product(
             productId="test-product",
+            orderProductId=123,
             name="Test rule book",
             fileLastModified=datetime.now().isoformat(),
             publisher=types.Publisher(name="Test Publishing"),
@@ -181,7 +182,7 @@ class DrpgSyncProcessItemTest(TestCase):
     @mock.patch("drpg.api.DrpgApi.file_task", return_value=file_task)
     @respx.mock(base_url=DrpgApi.API_URL, using="httpx")
     def test_writes_to_file(self, _, m_file_path, respx_mock):
-        respx_mock.get(self.file_task["download_url"]).respond(200, content=self.content)
+        respx_mock.get(self.file_task["url"]).respond(200, content=self.content)
 
         path = m_file_path.return_value
         type(path).parent = mock.PropertyMock(return_value=PathMock())

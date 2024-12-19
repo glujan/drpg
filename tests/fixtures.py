@@ -14,24 +14,17 @@ def _checksum_date_now():
 
 class FileTaskResponseFixture:
     @staticmethod
-    def complete(file_task_id, checksums_count=1) -> FileTasksResponse:
+    def complete(checksums_count=1) -> FileTasksResponse:
         return FileTasksResponse(
-            file_tasks_id=file_task_id,
-            download_url="https://example.com/file.pdf",
-            progress="Complete",
-            checksums=[
-                Checksum(checksum="md5hash", checksumDate=_checksum_date_now())
-                for _ in range(checksums_count)
-            ],
+            url="https://example.com/file.pdf",
+            status="Complete",
         )
 
     @staticmethod
-    def preparing(file_task_id) -> FileTasksResponse:
+    def preparing() -> FileTasksResponse:
         return FileTasksResponse(
-            file_tasks_id=file_task_id,
-            download_url="https://example.com/file.pdf",
-            progress="Preparing download...",
-            checksums=[],
+            url="https://example.com/file.pdf",
+            status="Preparing download...",
         )
 
 

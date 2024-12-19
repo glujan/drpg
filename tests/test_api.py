@@ -74,48 +74,52 @@ class DrpgApiCustomerProductsTest(TestCase):
 
 class DrpgApiFileTaskTest(TestCase):
     def setUp(self):
-        self.product_id = "test-product-id"
-        file_task_id = 123
+        self.order_product_id = 123
         params = urlencode({"siteId": 10, "index": 0, "getChecksums": 0})
-        self.file_tasks_url = f"/api/vBeta/order_products/{self.product_id}/prepare?{params}"
+        self.prepare_download_url = (
+            f"/api/vBeta/order_products/{self.order_product_id}/prepare?{params}"
+        )
+        self.check_download_url = (
+            f"/api/vBeta/order_products/{self.order_product_id}/check?{params}"
+        )
 
-        self.response_preparing = FileTaskResponseFixture.preparing(file_task_id)
-        self.response_ready = FileTaskResponseFixture.complete(file_task_id)
+        self.response_preparing = FileTaskResponseFixture.preparing()
+        self.response_ready = FileTaskResponseFixture.complete()
 
         self.client = api.DrpgApi("token")
 
     @tmp_respx_mock(base_url=api_base_url)
     def test_immiediate_download_url(self, respx_mock):
-        respx_mock.post(self.file_tasks_url).respond(201, json=self.response_ready)
+        respx_mock.get(self.prepare_download_url).respond(200, json=self.response_ready)
 
-        file_data = self.client.file_task(self.product_id, 0)
+        file_data = self.client.file_task(self.order_product_id, 0)
         self.assertEqual(file_data, self.response_ready)
 
     @mock.patch("drpg.api.sleep")
     @tmp_respx_mock(base_url=api_base_url)
     def test_wait_for_download_url(self, _, respx_mock):
-        respx_mock.post(self.file_tasks_url).respond(201, json=self.response_preparing)
-        respx_mock.get(self.file_tasks_url).respond(200, json=self.response_ready)
+        respx_mock.get(self.prepare_download_url).respond(200, json=self.response_preparing)
+        respx_mock.get(self.check_download_url).respond(200, json=self.response_ready)
 
-        file_data = self.client.file_task(self.product_id, 0)
+        file_data = self.client.file_task(self.order_product_id, 0)
         self.assertEqual(file_data, self.response_ready)
 
     @tmp_respx_mock(base_url=api_base_url)
     def test_unsuccesful_response(self, respx_mock):
         dummy_400_response = {"message": "Invalid product id"}
-        respx_mock.post(self.file_tasks_url).respond(400, json=dummy_400_response)
+        respx_mock.get(self.prepare_download_url).respond(400, json=dummy_400_response)
 
         with self.assertRaises(self.client.FileTaskException) as cm:
-            self.client.file_task(self.product_id, 0)
+            self.client.file_task(self.order_product_id, 0)
         self.assertTupleEqual(cm.exception.args, (self.client.FileTaskException.REQUEST_FAILED,))
 
     @tmp_respx_mock(base_url=api_base_url)
     def test_unexpected_response_with_string_message(self, respx_mock):
         dummy_unexpected_response = {"message": "Invalid product id"}
-        respx_mock.post(self.file_tasks_url).respond(201, json=dummy_unexpected_response)
+        respx_mock.get(self.prepare_download_url).respond(200, json=dummy_unexpected_response)
 
         with self.assertRaises(self.client.FileTaskException) as cm:
-            self.client.file_task(self.product_id, 0)
+            self.client.file_task(self.order_product_id, 0)
         self.assertTupleEqual(
             cm.exception.args, (self.client.FileTaskException.UNEXPECTED_RESPONSE,)
         )
@@ -123,10 +127,10 @@ class DrpgApiFileTaskTest(TestCase):
     @tmp_respx_mock(base_url=api_base_url)
     def test_unexpected_response_with_json_message(self, respx_mock):
         dummy_unexpected_response = {"message": {"reason": "Invalid product id"}}
-        respx_mock.post(self.file_tasks_url).respond(201, json=dummy_unexpected_response)
+        respx_mock.get(self.prepare_download_url).respond(200, json=dummy_unexpected_response)
 
         with self.assertRaises(self.client.FileTaskException) as cm:
-            self.client.file_task(self.product_id, 0)
+            self.client.file_task(self.order_product_id, 0)
         self.assertTupleEqual(
             cm.exception.args, (self.client.FileTaskException.UNEXPECTED_RESPONSE,)
         )

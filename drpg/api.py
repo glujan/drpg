@@ -63,7 +63,7 @@ class DrpgApi:
             yield from result
             page += 1
 
-    def file_task(self, product_id: str, item_id: int) -> FileTasksResponse:
+    def file_task(self, product_id: int, item_id: int) -> FileTasksResponse:
         """Generate a download link and metadata for a product's item."""
 
         task_params = {
@@ -71,7 +71,7 @@ class DrpgApi:
             "index": 0,
             "getChecksums": 0,  # Official clients defaults to 1
         }
-        resp = self._client.post(f"order_products/{product_id}/prepare", params=task_params)  # TODO
+        resp = self._client.get(f"order_products/{product_id}/prepare", params=task_params)
 
         def _parse_message(resp) -> FileTasksResponse:
             message: FileTasksResponse = resp.json()
@@ -97,12 +97,10 @@ class DrpgApi:
                 raise self.FileTaskException(self.FileTaskException.REQUEST_FAILED)
             return message
 
-        while (data := _parse_message(resp))["progress"].startswith("Preparing"):
+        while (data := _parse_message(resp))["status"].startswith("Preparing"):
             logger.debug("Waiting for download link for: %s - %s", product_id, item_id)
             sleep(3)
-            resp = self._client.get(
-                f"order_products/{product_id}/prepare", params=task_params
-            )  # TODO Outdated
+            resp = self._client.get(f"order_products/{product_id}/check", params=task_params)
 
         logger.debug("Got download link for: %s - %s", product_id, item_id)
         return data

@@ -24,7 +24,7 @@ if TYPE_CHECKING:  # pragma: no cover
     NoneCallable = Callable[..., None]
     Decorator = Callable[[NoneCallable], NoneCallable]
 
-_checksum_time_format = "%Y-%m-%d %H:%M:%S"
+_checksum_time_format = "%Y-%m-%d %H:%M:%S"  # TODO It is now ISO format
 logger = logging.getLogger("drpg")
 
 
@@ -82,7 +82,7 @@ class DrpgSync:
             logger.info("Processing: %s - %s", product["name"], item["filename"])
 
             try:
-                url_data = self._api.file_task(product["productId"], item["index"])
+                url_data = self._api.file_task(product["orderProductId"], item["index"])
             except self._api.FileTaskException:
                 logger.warning(
                     "Could not download product: %s - %s",
@@ -91,7 +91,7 @@ class DrpgSync:
                 )
                 return
 
-            file_response = httpx.get(url_data["download_url"], timeout=30.0, follow_redirects=True)
+            file_response = httpx.get(url_data["url"], timeout=30.0, follow_redirects=True)
 
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(file_response.content)

@@ -81,6 +81,7 @@ class DrpgSyncNeedDownloadTest(TestCase):
     def test_local_last_modified_older(self, _):
         item = self.dummy_item(self.new_date)
         product = self.dummy_product(item)
+        product["fileLastModified"] = datetime.now().isoformat()
 
         need = self.sync._need_download(product, item)
         self.assertTrue(need)

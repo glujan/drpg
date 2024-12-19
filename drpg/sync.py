@@ -18,8 +18,8 @@ if TYPE_CHECKING:  # pragma: no cover
     from pathlib import Path
     from typing import Any, Callable
 
-    from drpg.api import DownloadItem, Product
     from drpg.config import Config
+    from drpg.types import DownloadItem, Product
 
     NoneCallable = Callable[..., None]
     Decorator = Callable[[NoneCallable], NoneCallable]

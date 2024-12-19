@@ -11,9 +11,10 @@ import respx
 from httpx import HTTPError
 
 import drpg.sync
+from drpg import types
 from drpg.api import DrpgApi
 
-from .responses import Checksum, FileResponse, FileTaskResponse, ProductResponse
+from .responses import FileResponse, FileTaskResponse
 
 
 class dummy_config:
@@ -122,10 +123,21 @@ class DrpgSyncNeedDownloadTest(TestCase):
 
     def dummy_item(self, date):
         file_md5 = md5(self.file_content).hexdigest()
-        return dataclasses.asdict(FileResponse("file.pdf", date.isoformat(), [Checksum(file_md5)]))
+        return dataclasses.asdict(
+            FileResponse(
+                "file.pdf",
+                date.isoformat(),
+                [types.Checksum(checksum=file_md5, checksumDate=_checksum_date_now())],
+            )
+        )
 
     def dummy_product(self, *files):
-        return dataclasses.asdict(ProductResponse("Test rule book", "Test Publishing", files=files))
+        return types.Product(
+            name="Test rule book",
+            fileLastModified=self.old_date.isoformat(),
+            publisher=types.Publisher(name="Test Publishing"),
+            files=files,
+        )
 
 
 class DrpgSyncFilePathTest(TestCase):
@@ -134,8 +146,8 @@ class DrpgSyncFilePathTest(TestCase):
 
     def test_product_starts_with_slash(self):
         product = {
-            "publishers_name": "/Slash Publishing",
-            "products_name": "Rulebook - 2. ed",
+            "name": "Rulebook - 2. ed",
+            "publisher": {"name": "/Slash Publishing"},
         }
         item = {"filename": "filename.pdf"}
 
@@ -151,10 +163,17 @@ class DrpgSyncProcessItemTest(TestCase):
     content = b"content"
 
     def setUp(self):
-        item = FileResponse("file.pdf", datetime.now().isoformat(), [Checksum("md5")])
-        self.item = dataclasses.asdict(item)
-        self.product = dataclasses.asdict(
-            ProductResponse("Test rule book", "Test Publishing", files=[item])
+        self.item = types.DownloadItem(
+            index=0,
+            filename="test.pdf",
+            checksums=[types.Checksum(checksum="md5", checksumDate=_checksum_date_now)],
+        )
+        self.product = types.Product(
+            productId="test-product",
+            name="Test rule book",
+            fileLastModified=datetime.now().isoformat(),
+            publisher=types.Publisher(name="Test Publishing"),
+            files=[self.item],
         )
         self.sync = drpg.DrpgSync(dummy_config)
 
@@ -219,15 +238,14 @@ class DrpgSyncTest(TestCase):
         self.assertEqual(process_item_mock.call_count, files_count * products_count)
 
     def dummy_product(self, name, files_count):
-        return dataclasses.asdict(
-            ProductResponse(
-                name,
-                "Test Publishing",
-                files=[
-                    FileResponse(f"file{i}.pdf", datetime.now().isoformat(), [])
-                    for i in range(files_count)
-                ],
-            )
+        return types.Product(
+            productId="test-product",
+            name=name,
+            publisher=types.Publisher(name="Test Publishing"),
+            files=[
+                FileResponse(f"file{i}.pdf", datetime.now().isoformat(), [])
+                for i in range(files_count)
+            ],
         )
 
 
@@ -306,3 +324,7 @@ class NewestChecksumTest(TestCase):
     def test_no_checksums(self):
         checksum = drpg.sync._newest_checksum({"checksums": []})
         self.assertIsNone(checksum)
+
+
+def _checksum_date_now():
+    return datetime.now().strftime(drpg.sync._checksum_time_format)

@@ -7,6 +7,7 @@ import drpg
 import drpg.api
 import drpg.cmd
 import drpg.sync
+from drpg.types import Checksum
 
 
 def _checksum_date_now():
@@ -15,12 +16,6 @@ def _checksum_date_now():
 
 def _random_id():
     return str(randint(100, 1000))
-
-
-@dataclasses.dataclass
-class Checksum:
-    checksum: str
-    checksum_date: str = dataclasses.field(default_factory=_checksum_date_now)
 
 
 @dataclasses.dataclass
@@ -36,7 +31,10 @@ class FileTaskResponse:
             file_task_id,
             "https://example.com/file.pdf",
             "Complete",
-            [Checksum("md5hash") for _ in range(checksums_count)],
+            [
+                Checksum(checksum="md5hash", checksumDate=_checksum_date_now())
+                for _ in range(checksums_count)
+            ],
         )
         return dataclasses.asdict(instance)
 
@@ -52,11 +50,3 @@ class FileResponse:
     last_modified: str
     checksums: list[Checksum]
     bundle_id: str = dataclasses.field(default_factory=_random_id)
-
-
-@dataclasses.dataclass
-class ProductResponse:
-    products_name: str
-    publishers_name: str
-    files: list[FileResponse]
-    products_id: str = dataclasses.field(default_factory=_random_id)

@@ -8,40 +8,8 @@ import httpx
 
 if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Iterator
-    from typing import TypedDict
 
-    class TokenResponse(TypedDict):
-        token: str
-        refreshToken: str
-        refreshTokenTTL: int
-
-    class FileTasksResponse(TypedDict):
-        file_tasks_id: str
-        message: str
-        download_url: str
-
-    class Product(TypedDict):
-        productId: str
-        publisher: Publisher
-        name: str
-        bundleId: int
-        orderProductId: str  # Used to generate download file
-        fileLastModified: str
-        files: list[DownloadItem]
-
-    class Publisher(TypedDict):
-        name: str
-
-    class DownloadItem(TypedDict):
-        index: int
-        filename: str
-        orderProductDownloadId: int
-        checksums: list[Checksum]
-
-    class Checksum(TypedDict):
-        checksum: str
-        checksumDate: str
-
+    from drpg.types import FileTasksResponse, Product, TokenResponse
 
 logger = logging.getLogger("drpg")
 JSON_MIME = "application/json"
@@ -57,23 +25,25 @@ class DrpgApi:
         REQUEST_FAILED = "Got non 2xx response"
 
     def __init__(self, api_key: str):
-        self._client = httpx.Client(base_url=self.API_URL, timeout=30.0)
-        self._api_key = api_key
-        self._customer_id = None  # TODO Unused?
-
-    def token(self) -> TokenResponse:
-        """
-        Update access token and customer's details based on an API key.
-        """
-        resp = self._client.post(
-            "auth_key",
-            params={"applicationKey": self._api_key},
+        self._client = httpx.Client(
+            base_url=self.API_URL,
+            timeout=30.0,
             headers={
                 "Content-Type": JSON_MIME,
                 "Accept": JSON_MIME,
                 "Accept-Encoding": "gzip, deflate",
                 "User-Agent": "Mozilla/5.0",
             },
+        )
+        self._api_key = api_key
+
+    def token(self) -> TokenResponse:
+        """
+        Update access token based on an API key.
+        """
+        resp = self._client.post(
+            "auth_key",
+            params={"applicationKey": self._api_key},
         )
 
         if resp.status_code == httpx.codes.UNAUTHORIZED:
@@ -102,21 +72,12 @@ class DrpgApi:
             "index": 0,
             "getChecksums": 0,  # Official clients defaults to 1
         }
-        resp = self._client.post(  # TODO Outdated
-            f"order_products/{product_id}/prepare",
-            params=task_params,
-            headers={
-                "Content-Type": JSON_MIME,
-                "Accept": JSON_MIME,
-                "Accept-Encoding": "gzip, deflate",
-                "User-Agent": "Mozilla/5.0",
-            },
-        )
+        resp = self._client.post(f"order_products/{product_id}/prepare", params=task_params)  # TODO
 
-        def _parse_message(resp):
-            message = resp.json()["message"]
+        def _parse_message(resp) -> FileTasksResponse:
+            message: FileTasksResponse = resp.json()
             if resp.is_success:
-                expected_keys = {"progress", "file_tasks_id", "download_url"}
+                expected_keys = {"progress", "file_tasks_id", "download_url"}  # TODO
                 if isinstance(message, dict) and expected_keys.issubset(message.keys()):
                     logger.debug("Got download url for %s - %s: %s", product_id, item_id, message)
                 else:
@@ -140,8 +101,9 @@ class DrpgApi:
         while (data := _parse_message(resp))["progress"].startswith("Preparing"):
             logger.debug("Waiting for download link for: %s - %s", product_id, item_id)
             sleep(3)
-            task_id = data["file_tasks_id"]
-            resp = self._client.get(f"file_tasks/{task_id}", params=task_params)  # TODO Outdated
+            resp = self._client.get(
+                f"order_products/{product_id}/prepare", params=task_params
+            )  # TODO Outdated
 
         logger.debug("Got download link for: %s - %s", product_id, item_id)
         return data
@@ -153,12 +115,6 @@ class DrpgApi:
 
         return self._client.get(
             "order_products",
-            headers={
-                "Content-Type": JSON_MIME,
-                "Accept": JSON_MIME,
-                "Accept-Encoding": "gzip, deflate",
-                "User-Agent": "Mozilla/5.0",
-            },
             params={
                 "getChecksum": 1,
                 "getFilters": 0,  # Official clients defaults to 1

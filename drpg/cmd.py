@@ -25,7 +25,7 @@ __all__ = ["run"]
 
 def run() -> None:
     signal.signal(signal.SIGINT, _handle_signal)
-    sys.excepthook = _excepthook
+    #  sys.excepthook = _excepthook
     config = _parse_cli()
     _setup_logger(config.log_level)
 

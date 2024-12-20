@@ -27,14 +27,18 @@ class DrpgApi:
         REQUEST_FAILED = "Got non 2xx response"
 
     def __init__(self, api_key: str):
+        logger.debug("Preparing httpx client")
         self._client = httpx.Client(
             base_url=self.API_URL,
+            http1=False,
+            http2=True,
             timeout=30.0,
             headers={
                 "Content-Type": JSON_MIME,
                 "Accept": JSON_MIME,
                 "Accept-Encoding": "gzip, deflate",
                 "User-Agent": "Mozilla/5.0",
+                "Connection": "keep-alive",
             },
         )
         self._api_key = api_key

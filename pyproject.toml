@@ -21,7 +21,7 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: CPython",
 ]
 dependencies = [
-    "httpx>=0.20",
+    "httpx[http2]>=0.20",
 ]
 
 [project.optional-dependencies]
@@ -48,7 +48,7 @@ line-length = 100
 
 [tool.coverage.run]
 branch = true
-include = ["drpg/*"]
+include = ["drpg/*","tests/*"]
 omit = [".ropeproject", "venv"]
 
 [tool.coverage.report]

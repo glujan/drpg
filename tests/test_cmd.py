@@ -117,7 +117,7 @@ class ApplicationKeyFilterTest(TestCase):
     def test_matching_record(self):
         secret = "123456789012345"
         record = logging.LogRecord(
-            name=__name__,
+            name="httpx",
             level=logging.INFO,
             pathname="dummy.py",
             lineno=10,
@@ -137,7 +137,7 @@ class ApplicationKeyFilterTest(TestCase):
     def test_not_matching_record(self):
         secret = "123456789012345"
         record = logging.LogRecord(
-            name=__name__,
+            name="httpx",
             level=logging.INFO,
             pathname="dummy.py",
             lineno=10,
@@ -156,7 +156,7 @@ class ApplicationKeyFilterTest(TestCase):
 
     def test_silent_exception(self):
         record = logging.LogRecord(
-            name=__name__,
+            name="httpx",
             level=logging.INFO,
             pathname="dummy.py",
             lineno=10,

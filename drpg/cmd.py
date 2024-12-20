@@ -13,6 +13,8 @@ from pathlib import Path
 from traceback import format_exception
 from typing import TYPE_CHECKING
 
+import httpx
+
 import drpg
 from drpg.config import Config
 
@@ -169,11 +171,18 @@ def _excepthook(
     logger.info("".join(format_exception(exc_type, exc, tb)))
 
 
+_APPLICATION_KEY_RE = re.compile(r"(applicationKey=)(.{10,40})")
+
+
 def application_key_filter(record: logging.LogRecord):
     try:
         method, url, *other = record.args  # type: ignore
-        if method == "POST" and url.params.get("applicationKey"):  # type: ignore
-            url = re.sub(r"(applicationKey=)(.{10,40})", r"\1******", str(url))
+        if (
+            record.name == "httpx"
+            and isinstance(url, httpx.URL)
+            and url.params.get("applicationKey")
+        ):
+            url = re.sub(_APPLICATION_KEY_RE, r"\1******", str(url))
             record.args = (method, url) + tuple(other)
     except Exception:
         pass

@@ -191,15 +191,9 @@ def _normalize_path_part(part: str, compatibility_mode: bool) -> str:
     # Since Windows is the lowest common denominator, we use its restrictions on all platforms.
 
     if compatibility_mode:
-        separator = "_"
-        part = re.sub(r"[^a-zA-Z0-9.\s]", separator, part)
-        part = re.sub(r"\s+", " ", part)
+        part = PathNormalizer.normalize_drivethrurpg_compatible(part)
     else:
-        separator = " - "
-        part = html.unescape(part)
-        part = re.sub(r'[<>:"/\\|?*]', separator, part).strip(separator)
-        part = re.sub(f"({separator})+", separator, part)
-        part = re.sub(r"\s+", " ", part)
+        part = PathNormalizer.normalize(part)
     return part
 
 
@@ -209,3 +203,26 @@ def _newest_checksum(item: DownloadItem) -> str | None:
         default={"checksum": None},
         key=lambda s: datetime.fromisoformat(s["checksumDate"]),
     )["checksum"]
+
+
+class PathNormalizer:
+    separator_drpg = " - "
+    multiple_drpg_separators = f"({separator_drpg})+"
+    multiple_whitespaces = re.compile(r"\s+")
+    non_standard_characters = re.compile(r"[^a-zA-Z0-9.\s]")
+
+    @classmethod
+    def normalize_drivethrurpg_compatible(cls, part: str) -> str:
+        separator = "_"
+        part = re.sub(cls.non_standard_characters, separator, part)
+        part = re.sub(cls.multiple_whitespaces, " ", part)
+        return part
+
+    @classmethod
+    def normalize(cls, part: str) -> str:
+        separator = PathNormalizer.separator_drpg
+        part = html.unescape(part)
+        part = re.sub(r'[<>:"/\\|?*]', separator, part).strip(separator)
+        part = re.sub(PathNormalizer.multiple_drpg_separators, separator, part)
+        part = re.sub(PathNormalizer.multiple_whitespaces, " ", part)
+        return part

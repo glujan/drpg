@@ -99,7 +99,7 @@ class DrpgApi:
 
         while (data := _parse_message(resp))["status"].startswith("Preparing"):
             logger.debug("Waiting for download link for: %s - %s", product_id, item_id)
-            sleep(3)
+            sleep(2)
             resp = self._client.get(f"order_products/{product_id}/check", params=task_params)
 
         logger.debug("Got download link for: %s - %s", product_id, item_id)

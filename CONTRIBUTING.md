@@ -14,21 +14,21 @@ changes you'd like to have merged to the project and create a new Pull Request.
 
 Please provide tests for the code you are contributing.
 
-# Development
+## Development
 
-## Prerequisites
+### Prerequisites
 
 As a first step, you need to create a new virtualenv and install development
 dependencies:
 
 ```bash
-python3.8 -m venv venv
+python3.9 -m venv venv
 source venv/bin/activate
 pip install -r requirements.dev.txt
 
 ```
 
-## Running tests
+### Running tests
 
 Tests are implemented in `unittest` standard library. To run them simply
 execute:
@@ -38,7 +38,7 @@ source venv/bin/activate
 python -m unittest discover
 ```
 
-## Building a wheel
+### Building a wheel
 
 The project is using `build` with `hatchling` as a backend. To generate a source or wheel package run:
 
@@ -50,7 +50,7 @@ python -m build --sdist --wheel --outdir dist/
 The wheel and source distribution will be saved in a `dist/` directory.
 
 
-## Testing out the wheel
+### Testing out the wheel
 
 If you want to test the wheel you just created, install it in your project, like this:
 
@@ -65,3 +65,16 @@ Then you can do a test run like this:
 ```bash
 python -m drpg --dry-run --token <whatever> --library-path <whatever>
 ```
+
+## Configuring mitmproxy
+
+1. Set up and run mitmproxy
+2. Set proxy in wine to 127.0.0.1:8080
+   ```
+   wine rundll32.exe shell32.dll,Control_RunDLL inetcpl.cpl
+   ```
+3. Run the official DriveThruRPG client. Login, download some products.
+4. Save the mitmproxy flow. You can open it with:
+   ```bash
+   mitmproxy --rfile drpg.flow -n
+   ```

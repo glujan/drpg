@@ -1,4 +1,3 @@
-import dataclasses
 import string
 from datetime import datetime, timedelta
 from functools import partial
@@ -11,9 +10,10 @@ import respx
 from httpx import HTTPError
 
 import drpg.sync
+from drpg import types
 from drpg.api import DrpgApi
 
-from .responses import Checksum, FileResponse, FileTaskResponse, ProductResponse
+from .fixtures import FileTaskResponseFixture
 
 
 class dummy_config:
@@ -22,6 +22,7 @@ class dummy_config:
     library_path = Path("./test_library")
     dry_run = False
     compatibility_mode = False
+    omit_publisher = False
 
 
 PathMock = partial(mock.Mock, spec=Path)
@@ -80,6 +81,7 @@ class DrpgSyncNeedDownloadTest(TestCase):
     def test_local_last_modified_older(self, _):
         item = self.dummy_item(self.new_date)
         product = self.dummy_product(item)
+        product["fileLastModified"] = datetime.now().isoformat()
 
         need = self.sync._need_download(product, item)
         self.assertTrue(need)
@@ -121,10 +123,19 @@ class DrpgSyncNeedDownloadTest(TestCase):
 
     def dummy_item(self, date):
         file_md5 = md5(self.file_content).hexdigest()
-        return dataclasses.asdict(FileResponse("file.pdf", date.isoformat(), [Checksum(file_md5)]))
+        return types.DownloadItem(
+            index=0,
+            filename="file.pdf",
+            checksums=[types.Checksum(checksum=file_md5, checksumDate=_checksum_date_now())],
+        )
 
     def dummy_product(self, *files):
-        return dataclasses.asdict(ProductResponse("Test rule book", "Test Publishing", files=files))
+        return types.Product(
+            name="Test rule book",
+            fileLastModified=self.old_date.isoformat(),
+            publisher=types.Publisher(name="Test Publishing"),
+            files=files,
+        )
 
 
 class DrpgSyncFilePathTest(TestCase):
@@ -133,8 +144,8 @@ class DrpgSyncFilePathTest(TestCase):
 
     def test_product_starts_with_slash(self):
         product = {
-            "publishers_name": "/Slash Publishing",
-            "products_name": "Rulebook - 2. ed",
+            "name": "Rulebook - 2. ed",
+            "publisher": {"name": "/Slash Publishing"},
         }
         item = {"filename": "filename.pdf"}
 
@@ -146,22 +157,30 @@ class DrpgSyncFilePathTest(TestCase):
 
 
 class DrpgSyncProcessItemTest(TestCase):
-    file_task = FileTaskResponse.complete("123")
+    file_task = FileTaskResponseFixture.complete()
     content = b"content"
 
     def setUp(self):
-        item = FileResponse("file.pdf", datetime.now().isoformat(), [Checksum("md5")])
-        self.item = dataclasses.asdict(item)
-        self.product = dataclasses.asdict(
-            ProductResponse("Test rule book", "Test Publishing", files=[item])
+        self.item = types.DownloadItem(
+            index=0,
+            filename="test.pdf",
+            checksums=[types.Checksum(checksum="md5", checksumDate=_checksum_date_now)],
+        )
+        self.product = types.Product(
+            productId="test-product",
+            orderProductId=123,
+            name="Test rule book",
+            fileLastModified=datetime.now().isoformat(),
+            publisher=types.Publisher(name="Test Publishing"),
+            files=[self.item],
         )
         self.sync = drpg.DrpgSync(dummy_config)
 
     @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock())
     @mock.patch("drpg.api.DrpgApi.file_task", return_value=file_task)
-    @respx.mock(base_url=DrpgApi.API_URL)
+    @respx.mock(base_url=DrpgApi.API_URL, using="httpx")
     def test_writes_to_file(self, _, m_file_path, respx_mock):
-        respx_mock.get(self.file_task["download_url"]).respond(200, content=self.content)
+        respx_mock.get(self.file_task["url"]).respond(200, content=self.content)
 
         path = m_file_path.return_value
         type(path).parent = mock.PropertyMock(return_value=PathMock())
@@ -218,15 +237,14 @@ class DrpgSyncTest(TestCase):
         self.assertEqual(process_item_mock.call_count, files_count * products_count)
 
     def dummy_product(self, name, files_count):
-        return dataclasses.asdict(
-            ProductResponse(
-                name,
-                "Test Publishing",
-                files=[
-                    FileResponse(f"file{i}.pdf", datetime.now().isoformat(), [])
-                    for i in range(files_count)
-                ],
-            )
+        return types.Product(
+            productId="test-product",
+            name=name,
+            publisher=types.Publisher(name="Test Publishing"),
+            files=[
+                types.DownloadItem(index=0, filename=f"file{i}.pdf", checksums=[])
+                for i in range(files_count)
+            ],
         )
 
 
@@ -305,3 +323,7 @@ class NewestChecksumTest(TestCase):
     def test_no_checksums(self):
         checksum = drpg.sync._newest_checksum({"checksums": []})
         self.assertIsNone(checksum)
+
+
+def _checksum_date_now():
+    return datetime.now().isoformat()

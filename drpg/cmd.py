@@ -5,6 +5,7 @@ import configparser
 import logging
 import os.path
 import platform
+import re
 import signal
 import sys
 from os import environ
@@ -75,11 +76,20 @@ def _parse_cli(args: CliArgs | None = None) -> Config:
         default=environ.get("DRPG_DRY_RUN", "false").lower() == "true",
         help="Determine what should be downloaded, but do not download it. Defaults to false",
     )
-    parser.add_argument(
+
+    compability_group = parser.add_mutually_exclusive_group()
+
+    compability_group.add_argument(
         "--compatibility-mode",
         action="store_true",
         default=environ.get("DRPG_COMPATIBILITY_MODE", "false").lower() == "true",
         help="Name files and directories the way that DriveThruRPG's client app does.",
+    )
+    compability_group.add_argument(
+        "--omit-publisher",
+        action="store_true",
+        default=environ.get("DRPG_OMIT_PUBLISHER", "false").lower() == "true",
+        help="Omit the publisher name in the target path.",
     )
 
     return parser.parse_args(args, namespace=Config())
@@ -108,13 +118,26 @@ def _default_dir() -> Path:
 
 def _setup_logger(level_name: str) -> None:
     level = logging.getLevelName(level_name)
+
+    if level == logging.DEBUG:
+        httpx_log_level = logging.INFO
+        format = "%(name)-8s - %(asctime)s - %(message)s"
+    else:
+        httpx_log_level = logging.WARNING
+        format = "%(message)s"
+
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(level)
+    handler.addFilter(application_key_filter)
     logging.basicConfig(
-        format="%(message)s",
+        format=format,
         handlers=[handler],
         level=level,
     )
+
+    for name in ("httpx", "httpcore"):
+        logger = logging.getLogger(name)
+        logger.setLevel(httpx_log_level)
 
 
 def _handle_signal(sig: int, frame: FrameType | None) -> None:
@@ -127,4 +150,15 @@ def _excepthook(
 ) -> None:
     logger = logging.getLogger("drpg")
     logger.error("Unexpected error occurred, stopping!")
-    logger.debug("".join(format_exception(exc_type, exc, tb)))
+    logger.info("".join(format_exception(exc_type, exc, tb)))
+
+
+def application_key_filter(record: logging.LogRecord):
+    try:
+        method, url, *other = record.args  # type: ignore
+        if method == "POST" and url.params.get("applicationKey"):  # type: ignore
+            url = re.sub(r"(applicationKey=)(.{10,40})", r"\1******", str(url))
+            record.args = (method, url) + tuple(other)
+    except Exception:
+        pass
+    return True

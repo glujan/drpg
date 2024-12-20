@@ -1,20 +1,26 @@
 # Changelog
 
-## Unreleased
-* support httpx 0.20-0.27+
+## 2024.12.19
+* rewrite client to use new API
+
+## 2024.11.8
+* add `--omit-publisher`
+* support Python 3.9-3.13
+* test on Python 3.14 alpha
+* support httpx 0.21-0.27+
 
 ## 2024.1.17
-* support httpx 0.20-0.26+
 * support Python 3.8-3.12
 * test on Python 3.13 alpha
+* support httpx 0.20-0.26+
 
 ## 2023.11.10
 * add `--compatibility-mode`
 
 ## 2023.11.8
 * add `--dry-run` mode
-* support httpx 0.20-0.24+
 * support Python 3.8-3.12.0-beta.2
+* support httpx 0.20-0.24+
 * move to pyproject.toml
 * run `pre-commit` in CI
 

@@ -21,6 +21,7 @@ class ParseCliTest(TestCase):
             "DRPG_USE_CHECKSUMS": "true",
             "DRPG_DRY_RUN": "true",
             "DRPG_COMPATIBILITY_MODE": "true",
+            "DRPG_OMIT_PUBLISHER": "true",
         }
 
         with mock.patch.dict(cmd.environ, env):
@@ -32,6 +33,12 @@ class ParseCliTest(TestCase):
         self.assertTrue(config.use_checksums)
         self.assertTrue(config.dry_run)
         self.assertTrue(config.compatibility_mode)
+        self.assertTrue(config.omit_publisher)
+
+    @mock.patch("drpg.cmd.argparse.ArgumentParser.error")
+    def test_compability_mutually_exclusive_group(self, error_mock):
+        cmd._parse_cli(["--compatibility-mode", "--omit-publisher", "--token", "mock_token"])
+        error_mock.assert_called()
 
 
 class SignalHandlerTest(TestCase):

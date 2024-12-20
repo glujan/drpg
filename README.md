@@ -4,7 +4,7 @@
 
 ## Installation
 
-This script runs with Python 3.8 and newer.
+This script runs with Python 3.9 and newer.
 
 You can install dRPG from PyPI:
 ```bash
@@ -14,8 +14,8 @@ drpg --help  # or python -m drpg --help
 
 ## Usage
 
-1. Go to [your account settings](https://www.drivethrurpg.com/account_edit.php)
-   and generate a new application key.
+1. Go to [your account settings](https://www.drivethrurpg.com/en/account/settings)
+   and generate a new application key in the "Library App Keys" section.
 2. Copy the key and run the script: `drpg --token <YOUR_DRPG_TOKEN>` - or set
    `DRPG_TOKEN` env variable and run `drpg`.
 3. Now just sit, relax and wait. Initial synchronization may take a while so

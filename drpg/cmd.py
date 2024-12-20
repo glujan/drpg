@@ -121,9 +121,9 @@ def _default_dir() -> Path:
             config = configparser.ConfigParser()
             config.read_string(raw_config)
             raw_dir = config["xdg"]["xdg_documents_dir"]
+            dir = Path(os.path.expandvars(raw_dir))
         except (FileNotFoundError, KeyError):
             raw_dir = "$HOME/Documents"
-        finally:
             dir = Path(os.path.expandvars(raw_dir))
     elif os_name == "Windows":
         dir = Path.home()

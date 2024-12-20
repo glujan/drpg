@@ -7,7 +7,7 @@ class TokenResponse(TypedDict):
     refreshTokenTTL: int
 
 
-class FileTasksResponse(TypedDict):
+class PrepareDownloadUrlResponse(TypedDict):
     url: str
     status: str
 

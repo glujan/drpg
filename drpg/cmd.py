@@ -80,6 +80,13 @@ def _parse_cli(args: CliArgs | None = None) -> Config:
         help="How verbose the output should be. Defaults to 'INFO'",
     )
     parser.add_argument(
+        "--threads",
+        "-x",
+        type=int,
+        default=int(environ.get("DRPG_THREADS", "5")),
+        help="Specify number of threads used to download products",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         default=environ.get("DRPG_DRY_RUN", "false").lower() == "true",

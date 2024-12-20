@@ -24,6 +24,7 @@ class ParseCliTest(TestCase):
             "DRPG_USE_CHECKSUMS": "true",
             "DRPG_VALIDATE": "true",
             "DRPG_DRY_RUN": "true",
+            "DRPG_THREADS": "1",
             "DRPG_COMPATIBILITY_MODE": "true",
             "DRPG_OMIT_PUBLISHER": "true",
         }
@@ -37,6 +38,7 @@ class ParseCliTest(TestCase):
         self.assertTrue(config.use_checksums)
         self.assertTrue(config.validate)
         self.assertTrue(config.dry_run)
+        self.assertEqual(config.threads, int(env["DRPG_THREADS"]))
         self.assertTrue(config.compatibility_mode)
         self.assertTrue(config.omit_publisher)
 

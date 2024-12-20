@@ -47,12 +47,7 @@ class DrpgSync:
     """High level DriveThruRPG client that syncs products from a customer's library."""
 
     def __init__(self, config: Config) -> None:
-        self._use_checksums = config.use_checksums
-        self._library_path = config.library_path
-        self._dry_run = config.dry_run
-        self._compatibility_mode = config.compatibility_mode
-        self._validate = config.validate
-        self._omit_publisher = config.omit_publisher
+        self._config = config
         self._api = DrpgApi(config.token)
 
     def sync(self) -> None:
@@ -68,7 +63,7 @@ class DrpgSync:
             if self._need_download(product, item)
         )
 
-        with ThreadPool(5) as pool:
+        with ThreadPool(self._config.threads) as pool:
             pool.starmap(self._process_item, process_item_args)
         logger.info("Done!")
 
@@ -78,7 +73,7 @@ class DrpgSync:
 
         path = self._file_path(product, item)
 
-        if self._dry_run:
+        if self._config.dry_run:
             logger.info("DRY RUN - would have downloaded file: %s", path)
         else:
             logger.info("Processing: %s - %s", product["name"], item["filename"])
@@ -104,14 +99,16 @@ class DrpgSync:
             )
 
             if (
-                self._validate
-                and (checksum := _newest_checksum(item))
-                and md5(file_response.content).hexdigest() != checksum
+                self._config.validate
+                and (api_checksum := _newest_checksum(item))
+                and (local_checksum := md5(file_response.content).hexdigest()) != api_checksum
             ):
                 logger.error(
-                    "ERROR: Invalid checksum for %s - %s, skipping saving file",
+                    "ERROR: Invalid checksum for %s - %s, skipping saving file (%s != %s))",
                     product["name"],
                     item["filename"],
+                    api_checksum,
+                    local_checksum,
                 )
             else:
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -143,7 +140,7 @@ class DrpgSync:
             return True
 
         if (
-            self._use_checksums
+            self._config.use_checksums
             and (checksum := _newest_checksum(item))
             and md5(path.read_bytes()).hexdigest() != checksum
         ):
@@ -159,14 +156,14 @@ class DrpgSync:
 
     def _file_path(self, product: Product, item: DownloadItem) -> Path:
         publishers_name = _normalize_path_part(
-            product.get("publisher", {}).get("name", "Others"), self._compatibility_mode
+            product.get("publisher", {}).get("name", "Others"), self._config.compatibility_mode
         )
-        product_name = _normalize_path_part(product["name"], self._compatibility_mode)
-        item_name = _normalize_path_part(item["filename"], self._compatibility_mode)
-        if self._omit_publisher:
-            return self._library_path / product_name / item_name
+        product_name = _normalize_path_part(product["name"], self._config.compatibility_mode)
+        item_name = _normalize_path_part(item["filename"], self._config.compatibility_mode)
+        if self._config.omit_publisher:
+            return self._config.library_path / product_name / item_name
         else:
-            return self._library_path / publishers_name / product_name / item_name
+            return self._config.library_path / publishers_name / product_name / item_name
 
 
 def _normalize_path_part(part: str, compatibility_mode: bool) -> str:

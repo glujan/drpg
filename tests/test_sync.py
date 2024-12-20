@@ -22,6 +22,7 @@ class dummy_config:
     validate = False
     library_path = Path("./test_library")
     dry_run = False
+    threads = 5
     compatibility_mode = False
     omit_publisher = False
 
@@ -97,7 +98,7 @@ class DrpgSyncNeedDownloadTest(TestCase):
 
     @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock(**new_file_kwargs))
     def test_md5_check(self, _):
-        self.sync._use_checksums = True
+        self.sync._config.use_checksums = True
 
         with self.subTest("same md5"):
             item = self.dummy_item(self.old_date)
@@ -130,12 +131,14 @@ class DrpgSyncNeedDownloadTest(TestCase):
             checksums=[types.Checksum(checksum=file_md5, checksumDate=_checksum_date_now())],
         )
 
-    def dummy_product(self, *files):
+    def dummy_product(self, file):
         return types.Product(
-            name="Test rule book",
-            fileLastModified=self.old_date.isoformat(),
+            productId="test-id",
             publisher=types.Publisher(name="Test Publishing"),
-            files=files,
+            name="Test rule book",
+            orderProductId=123,
+            fileLastModified=self.old_date.isoformat(),
+            files=[file],
         )
 
 
@@ -282,8 +285,10 @@ class DrpgSyncTest(TestCase):
     def dummy_product(self, name, files_count):
         return types.Product(
             productId="test-product",
-            name=name,
             publisher=types.Publisher(name="Test Publishing"),
+            name=name,
+            orderProductId=987,
+            fileLastModified=datetime.now().isoformat(),
             files=[
                 types.DownloadItem(index=0, filename=f"file{i}.pdf", checksums=[])
                 for i in range(files_count)

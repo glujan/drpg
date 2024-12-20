@@ -1,17 +1,17 @@
-from drpg.types import FileTasksResponse
+from drpg.types import PrepareDownloadUrlResponse
 
 
-class FileTaskResponseFixture:
+class PrepareDownloadUrlResponseFixture:
     @staticmethod
-    def complete() -> FileTasksResponse:
-        return FileTasksResponse(
+    def complete() -> PrepareDownloadUrlResponse:
+        return PrepareDownloadUrlResponse(
             url="https://example.com/file.pdf",
             status="Complete",
         )
 
     @staticmethod
-    def preparing() -> FileTasksResponse:
-        return FileTasksResponse(
+    def preparing() -> PrepareDownloadUrlResponse:
+        return PrepareDownloadUrlResponse(
             url="https://example.com/file.pdf",
             status="Preparing download...",
         )

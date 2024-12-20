@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import httpx
 
-from drpg.types import FileTasksResponse
+from drpg.types import PrepareDownloadUrlResponse
 
 if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Iterator
@@ -22,7 +22,7 @@ class DrpgApi:
 
     API_URL = "https://api.drivethrurpg.com/api/vBeta/"
 
-    class FileTaskException(Exception):
+    class PrepareDownloadUrlException(Exception):
         UNEXPECTED_RESPONSE = "Got response with unexpected schema"
         REQUEST_FAILED = "Got non 2xx response"
 
@@ -67,7 +67,7 @@ class DrpgApi:
             yield from result
             page += 1
 
-    def file_task(self, product_id: int, item_id: int) -> FileTasksResponse:
+    def prepare_download_url(self, product_id: int, item_id: int) -> PrepareDownloadUrlResponse:
         """Generate a download link and metadata for a product's item."""
 
         task_params = {
@@ -77,10 +77,10 @@ class DrpgApi:
         }
         resp = self._client.get(f"order_products/{product_id}/prepare", params=task_params)
 
-        def _parse_message(resp) -> FileTasksResponse:
-            message: FileTasksResponse = resp.json()
+        def _parse_message(resp) -> PrepareDownloadUrlResponse:
+            message: PrepareDownloadUrlResponse = resp.json()
             if resp.is_success:
-                expected_keys = FileTasksResponse.__required_keys__
+                expected_keys = PrepareDownloadUrlResponse.__required_keys__
                 if isinstance(message, dict) and expected_keys.issubset(message.keys()):
                     logger.debug("Got download url for %s - %s: %s", product_id, item_id, message)
                 else:
@@ -90,7 +90,9 @@ class DrpgApi:
                         item_id,
                         message,
                     )
-                    raise self.FileTaskException(self.FileTaskException.UNEXPECTED_RESPONSE)
+                    raise self.PrepareDownloadUrlException(
+                        self.PrepareDownloadUrlException.UNEXPECTED_RESPONSE
+                    )
             else:
                 logger.debug(
                     "Could not get download link for %s - %s: %s",
@@ -98,7 +100,9 @@ class DrpgApi:
                     item_id,
                     message,
                 )
-                raise self.FileTaskException(self.FileTaskException.REQUEST_FAILED)
+                raise self.PrepareDownloadUrlException(
+                    self.PrepareDownloadUrlException.REQUEST_FAILED
+                )
             return message
 
         while (data := _parse_message(resp))["status"].startswith("Preparing"):

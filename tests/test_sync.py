@@ -13,7 +13,7 @@ import drpg.sync
 from drpg import types
 from drpg.api import DrpgApi
 
-from .fixtures import FileTaskResponseFixture
+from .fixtures import PrepareDownloadUrlResponseFixture
 
 
 class dummy_config:
@@ -184,7 +184,7 @@ class DrpgSyncFilePathTest(TestCase):
 
 
 class DrpgSyncProcessItemTest(TestCase):
-    file_task = FileTaskResponseFixture.complete()
+    download_url = PrepareDownloadUrlResponseFixture.complete()
     content = b"content"
 
     def setUp(self):
@@ -204,12 +204,12 @@ class DrpgSyncProcessItemTest(TestCase):
         self.sync = drpg.DrpgSync(dummy_config)
 
     @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock())
-    @mock.patch("drpg.api.DrpgApi.file_task", return_value=file_task)
+    @mock.patch("drpg.api.DrpgApi.prepare_download_url", return_value=download_url)
     @respx.mock(base_url=DrpgApi.API_URL, using="httpx")
-    def test_writes_to_file(self, _, m_file_path, respx_mock):
-        respx_mock.get(self.file_task["url"]).respond(200, content=self.content)
+    def test_writes_to_file(self, _, file_path, respx_mock):
+        respx_mock.get(self.download_url["url"]).respond(200, content=self.content)
 
-        path = m_file_path.return_value
+        path = file_path.return_value
         type(path).parent = mock.PropertyMock(return_value=PathMock())
 
         self.sync._process_item(self.product, self.item)
@@ -218,37 +218,37 @@ class DrpgSyncProcessItemTest(TestCase):
         path.write_bytes.assert_called_once_with(self.content)
 
     @mock.patch("drpg.sync.logger")
-    @mock.patch("drpg.api.DrpgApi.file_task")
-    def test_io_error_occurs(self, m_file_task, _):
+    @mock.patch("drpg.api.DrpgApi.prepare_download_url")
+    def test_io_error_occurs(self, prepare_download_url, _):
         class TestHTTPError(HTTPError):
             def __init__(self):
                 "Helper error to easier make an instance of HTTPError"
 
         for error_class in [TestHTTPError, PermissionError]:
             with self.subTest(error_class=error_class):
-                m_file_task.side_effect = error_class
+                prepare_download_url.side_effect = error_class
                 try:
                     self.sync._process_item(self.product, self.item)
                 except error_class as e:  # pragma:  no cover
                     self.fail(e)
 
     @mock.patch("drpg.sync.logger")
-    @mock.patch("drpg.api.DrpgApi.file_task")
-    def test_unexpected_file_task_response(self, m_file_task, m_logger):
-        m_file_task.side_effect = DrpgApi.FileTaskException
+    @mock.patch("drpg.api.DrpgApi.prepare_download_url")
+    def test_unexpected_prepare_download_url_response(self, prepare_download_url, logger):
+        prepare_download_url.side_effect = DrpgApi.PrepareDownloadUrlException
         try:
             self.sync._process_item(self.product, self.item)
-        except DrpgApi.FileTaskException as e:  # pragma:  no cover
+        except DrpgApi.PrepareDownloadUrlException as e:  # pragma:  no cover
             self.fail(e)
         else:
-            m_logger.warning.assert_called_once()
-            msg, *_ = m_logger.warning.call_args[0]
+            logger.warning.assert_called_once()
+            msg, *_ = logger.warning.call_args[0]
             self.assertIn("Could not download product", msg)
 
     @mock.patch("drpg.sync.logger")
     @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock())
-    @mock.patch("drpg.api.DrpgApi.file_task", return_value=file_task)
-    def test_invalid_download(self, _file_task, _file_path, logger):
+    @mock.patch("drpg.api.DrpgApi.prepare_download_url", return_value=download_url)
+    def test_invalid_download(self, _prepare_download_url, _file_path, logger):
         config = dummy_config()
         config.validate = True
         drpg.DrpgSync(config)._process_item(self.product, self.item)

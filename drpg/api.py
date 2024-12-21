@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from time import sleep
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import httpx
 
@@ -57,7 +57,23 @@ class DrpgApi:
         self._client.headers["Authorization"] = login_data["token"]
         return login_data
 
-    def customer_products(self, per_page: int = 50) -> Iterator[Product]:
+    def products(
+        self, page: int = 1, per_page: int = 50, /, recursive: bool = False
+    ) -> Iterator[Product]:
+        result = self._product_page(page, per_page)
+        logger.debug("Yielding products page %d", page)
+        yield from result
+
+        if not recursive:
+            return
+
+        page += 1
+        while result := self._product_page(page, per_page):
+            logger.debug("Yielding products page %d", page)
+            yield from result
+            page += 1
+
+    def customer_products(self, per_page: int = 50) -> Iterator[Product]:  # XXX
         """List all not archived customer's products."""
 
         page = 1
@@ -82,7 +98,12 @@ class DrpgApi:
             if resp.is_success:
                 expected_keys = PrepareDownloadUrlResponse.__required_keys__
                 if isinstance(message, dict) and expected_keys.issubset(message.keys()):
-                    logger.debug("Got download url for %s - %s: %s", product_id, item_id, message)
+                    logger.debug(
+                        "Got download url for %s - %s, status='%s'",
+                        product_id,
+                        item_id,
+                        message["status"],
+                    )
                 else:
                     logger.debug(
                         "Got unexpected message when getting download url for %s - %s: %s",
@@ -103,7 +124,7 @@ class DrpgApi:
                 raise self.PrepareDownloadUrlException(
                     self.PrepareDownloadUrlException.REQUEST_FAILED
                 )
-            return message
+            return cast(PrepareDownloadUrlResponse, message)
 
         while (data := _parse_message(resp))["status"].startswith("Preparing"):
             logger.debug("Waiting for download link for: %s - %s", product_id, item_id)

@@ -3,6 +3,8 @@ from __future__ import annotations
 import functools
 import html
 import logging
+import multiprocessing
+import queue
 import re
 from datetime import datetime, timedelta
 from hashlib import md5
@@ -56,28 +58,84 @@ class DrpgSync:
         logger.info("Authenticating")
         self._api.token()
         logger.info("Fetching products list")
-        process_item_args = (
-            (product, item)
-            for product in self._api.customer_products()
-            for item in product["files"]
-            if self._need_download(product, item)
+
+        product_queue: multiprocessing.JoinableQueue = multiprocessing.JoinableQueue()
+        item_queue: multiprocessing.JoinableQueue = multiprocessing.JoinableQueue()
+
+        def put_to_queue(iterator):
+            for product in iterator:
+                product_queue.put(product)
+
+        put_to_queue(self._api.products(1, 50, recursive=False))
+
+        pool = ThreadPool(self._config.threads)
+        fetch_products = pool.apply_async(
+            self._api.products,
+            (2, 50),
+            {"recursive": True},
+            callback=put_to_queue,
+            error_callback=print,
+        )
+        pool.apply_async(
+            self._process_products,
+            (product_queue, item_queue),
+            error_callback=print,
         )
 
-        with ThreadPool(self._config.threads) as pool:
-            pool.starmap(self._process_item, process_item_args)
+        pool.starmap_async(
+            self._process_item,
+            ((item_queue,) for _ in range(self._config.threads - 2)),
+            error_callback=print,
+        )
+
+        fetch_products.wait()
+        print("fetch_products waited")
+        product_queue.join()
+        print("product_queue joined")
+        item_queue.join()
+        print("item_queue joined")
+        pool.terminate()
+        print("pool terminated")
+
         logger.info("Done!")
 
-    @suppress_errors(httpx.HTTPError, PermissionError)
-    def _process_item(self, product: Product, item: DownloadItem) -> None:
+    def _process_products(
+        self,
+        product_queue: multiprocessing.JoinableQueue,
+        item_queue: multiprocessing.JoinableQueue,
+    ) -> None:
+        while True:
+            try:
+                product: Product = product_queue.get(block=True, timeout=0.5)
+            except queue.Empty:
+                continue
+            for item in product["files"]:
+                item_queue.put((product, item))
+            product_queue.task_done()
+
+    #  @suppress_errors(httpx.HTTPError, PermissionError)
+    def _process_item(self, item_queue: multiprocessing.JoinableQueue) -> None:
         """Prepare for and download the item to the sync directory."""
+        product: Product
+        item: DownloadItem
+        while True:
+            try:
+                product, item = item_queue.get(block=True, timeout=0.5)
+            except queue.Empty:
+                continue
 
-        path = self._file_path(product, item)
+            if not self._need_download(product, item):
+                item_queue.task_done()
+                continue
 
-        if self._config.dry_run:
-            logger.info("DRY RUN - would have downloaded file: %s", path)
-        else:
+            path = self._file_path(product, item)
+
+            if self._config.dry_run:
+                logger.info("DRY RUN - would have downloaded file: %s", path)
+                item_queue.task_done()
+                continue
+
             logger.info("Processing: %s - %s", product["name"], item["filename"])
-
             try:
                 url_data = self._api.prepare_download_url(product["orderProductId"], item["index"])
             except self._api.PrepareDownloadUrlException:
@@ -86,7 +144,8 @@ class DrpgSync:
                     product["name"],
                     item["filename"],
                 )
-                return
+                item_queue.task_done()
+                continue  # TODO Maybe retry downloading the item?
 
             file_response = httpx.get(
                 url_data["url"],
@@ -114,6 +173,8 @@ class DrpgSync:
             else:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(file_response.content)
+                logger.info("Writing to %s", path)
+            item_queue.task_done()
 
     def _need_download(self, product: Product, item: DownloadItem) -> bool:
         """Specify whether or not the item needs to be downloaded."""

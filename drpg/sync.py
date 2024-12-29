@@ -93,8 +93,9 @@ class DrpgSync:
                 timeout=30.0,
                 follow_redirects=True,
                 headers={
-                    "Accept-Encoding": "gzip, deflate",
+                    "Accept-Encoding": "gzip, deflate, br",
                     "User-Agent": "Mozilla/5.0",
+                    "Accept": "*/*",
                 },
             )
 

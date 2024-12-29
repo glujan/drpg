@@ -138,10 +138,8 @@ def _setup_logger(level_name: str) -> None:
     level = logging.getLevelName(level_name)
 
     if level == logging.DEBUG:
-        httpx_log_level = logging.INFO
         format = "%(name)-8s - %(asctime)s - %(message)s"
     else:
-        httpx_log_level = logging.WARNING
         format = "%(message)s"
 
     handler = logging.StreamHandler(sys.stdout)
@@ -152,10 +150,23 @@ def _setup_logger(level_name: str) -> None:
         handlers=[handler],
         level=level,
     )
+    _set_httpx_log_level(level)
 
-    for name in ("httpx", "httpcore"):
+
+def _set_httpx_log_level(level: int):
+    if level == logging.DEBUG:
+        httpx_log_level = logging.DEBUG
+        httpx_deps_log_level = logging.INFO
+    else:
+        httpx_log_level = logging.WARNING
+        httpx_deps_log_level = logging.WARNING
+
+    logger = logging.getLogger("httpx")
+    logger.setLevel(httpx_log_level)
+
+    for name in ("httpcore", "hpack"):
         logger = logging.getLogger(name)
-        logger.setLevel(httpx_log_level)
+        logger.setLevel(httpx_deps_log_level)
 
 
 def _handle_signal(sig: int, frame: FrameType | None) -> None:

@@ -42,7 +42,7 @@ class SuppressErrorsTest(TestCase):
             with self.subTest(error=error), mock.patch("drpg.sync.logger") as logger:
                 try:
                     func_that_raises(error)
-                except error as e:
+                except error as e:  # pragma: no cover
                     self.fail(e)
                 logger.exception.assert_called_once()
 
@@ -153,7 +153,7 @@ class DrpgSyncFilePathTest(TestCase):
         path = drpg.DrpgSync(dummy_config)._file_path(product, item)
         try:
             path.relative_to(dummy_config.library_path)
-        except ValueError as e:
+        except ValueError as e:  # pragma: no cover
             self.fail(e)
 
     def test_omit_publisher(self):
@@ -229,7 +229,7 @@ class DrpgSyncProcessItemTest(TestCase):
                 m_file_task.side_effect = error_class
                 try:
                     self.sync._process_item(self.product, self.item)
-                except error_class as e:
+                except error_class as e:  # pragma:  no cover
                     self.fail(e)
 
     @mock.patch("drpg.sync.logger")
@@ -238,7 +238,7 @@ class DrpgSyncProcessItemTest(TestCase):
         m_file_task.side_effect = DrpgApi.FileTaskException
         try:
             self.sync._process_item(self.product, self.item)
-        except DrpgApi.FileTaskException as e:
+        except DrpgApi.FileTaskException as e:  # pragma:  no cover
             self.fail(e)
         else:
             m_logger.warning.assert_called_once()

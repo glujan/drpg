@@ -55,6 +55,22 @@ class SignalHandlerTest(TestCase):
         m_exit.assert_called_once_with(0)
 
 
+class SetHttpLogLevel(TestCase):
+    def test_debug(self):
+        cmd._set_httpx_log_level(logging.DEBUG)
+        self.assertEqual(logging.getLogger("httpx").level, logging.DEBUG)
+        self.assertEqual(logging.getLogger("httpcore").level, logging.INFO)
+        self.assertEqual(logging.getLogger("hpack").level, logging.INFO)
+
+    def test_more_than_debug(self):
+        for level in (logging.INFO, logging.WARNING, logging.ERROR):
+            with self.subTest(level=level):
+                cmd._set_httpx_log_level(level)
+                self.assertEqual(logging.getLogger("httpx").level, logging.WARNING)
+                self.assertEqual(logging.getLogger("httpcore").level, logging.WARNING)
+                self.assertEqual(logging.getLogger("hpack").level, logging.WARNING)
+
+
 class DefaultDirTest:
     def setUp(self):
         self.platform_system = mock.patch(

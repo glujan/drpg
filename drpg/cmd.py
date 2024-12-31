@@ -13,7 +13,9 @@ from pathlib import Path
 from traceback import format_exception
 from typing import TYPE_CHECKING
 
-from drpg import DrpgSync
+import httpx
+
+import drpg
 from drpg.config import Config
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -30,13 +32,16 @@ def run() -> None:
     config = _parse_cli()
     _setup_logger(config.log_level)
 
-    DrpgSync(config).sync()
+    drpg.DrpgSync(config).sync()
 
 
 def _parse_cli(args: CliArgs | None = None) -> Config:
     parser = argparse.ArgumentParser(
         prog="drpg",
-        description="Download and keep up to date your purchases from DriveThruRPG",
+        description=f"""
+            Download and keep up to date your purchases from DriveThruRPG.
+            Version {drpg.__version__}.
+        """,
         epilog="""
             Instead of parameters you can use environment variables. Prefix
             an option with DRPG_, capitalize it and replace '-' with '_'.
@@ -62,13 +67,27 @@ def _parse_cli(args: CliArgs | None = None) -> Config:
         "-c",
         action="store_true",
         default=environ.get("DRPG_USE_CHECKSUMS", "false").lower() == "true",
-        help="Calculate checksums for all files. Slower but possibly more precise",
+        help="Decide if a file needs to be downloaded based on checksums. Slower but more precise",
+    )
+    parser.add_argument(
+        "--validate",
+        "-v",
+        action="store_true",
+        default=environ.get("DRPG_VALIDATE", "false").lower() == "true",
+        help="Validate downloads by calculating checksums",
     )
     parser.add_argument(
         "--log-level",
         default=environ.get("DRPG_LOG_LEVEL", "INFO"),
         choices=[logging.getLevelName(i) for i in range(10, 60, 10)],
         help="How verbose the output should be. Defaults to 'INFO'",
+    )
+    parser.add_argument(
+        "--threads",
+        "-x",
+        type=int,
+        default=int(environ.get("DRPG_THREADS", "5")),
+        help="Specify number of threads used to download products",
     )
     parser.add_argument(
         "--dry-run",
@@ -105,9 +124,9 @@ def _default_dir() -> Path:
             config = configparser.ConfigParser()
             config.read_string(raw_config)
             raw_dir = config["xdg"]["xdg_documents_dir"]
+            dir = Path(os.path.expandvars(raw_dir))
         except (FileNotFoundError, KeyError):
             raw_dir = "$HOME/Documents"
-        finally:
             dir = Path(os.path.expandvars(raw_dir))
     elif os_name == "Windows":
         dir = Path.home()
@@ -120,10 +139,8 @@ def _setup_logger(level_name: str) -> None:
     level = logging.getLevelName(level_name)
 
     if level == logging.DEBUG:
-        httpx_log_level = logging.INFO
         format = "%(name)-8s - %(asctime)s - %(message)s"
     else:
-        httpx_log_level = logging.WARNING
         format = "%(message)s"
 
     handler = logging.StreamHandler(sys.stdout)
@@ -134,10 +151,23 @@ def _setup_logger(level_name: str) -> None:
         handlers=[handler],
         level=level,
     )
+    _set_httpx_log_level(level)
 
-    for name in ("httpx", "httpcore"):
+
+def _set_httpx_log_level(level: int):
+    if level == logging.DEBUG:
+        httpx_log_level = logging.DEBUG
+        httpx_deps_log_level = logging.INFO
+    else:
+        httpx_log_level = logging.WARNING
+        httpx_deps_log_level = logging.WARNING
+
+    logger = logging.getLogger("httpx")
+    logger.setLevel(httpx_log_level)
+
+    for name in ("httpcore", "hpack"):
         logger = logging.getLogger(name)
-        logger.setLevel(httpx_log_level)
+        logger.setLevel(httpx_deps_log_level)
 
 
 def _handle_signal(sig: int, frame: FrameType | None) -> None:
@@ -153,11 +183,18 @@ def _excepthook(
     logger.info("".join(format_exception(exc_type, exc, tb)))
 
 
+_APPLICATION_KEY_RE = re.compile(r"(applicationKey=)(.{10,40})")
+
+
 def application_key_filter(record: logging.LogRecord):
     try:
         method, url, *other = record.args  # type: ignore
-        if method == "POST" and url.params.get("applicationKey"):  # type: ignore
-            url = re.sub(r"(applicationKey=)(.{10,40})", r"\1******", str(url))
+        if (
+            record.name == "httpx"
+            and isinstance(url, httpx.URL)
+            and url.params.get("applicationKey")
+        ):
+            url = re.sub(_APPLICATION_KEY_RE, r"\1******", str(url))
             record.args = (method, url) + tuple(other)
     except Exception:
         pass

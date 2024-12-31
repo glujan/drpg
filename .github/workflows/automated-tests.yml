@@ -42,7 +42,7 @@ jobs:
         coverage run -m unittest discover
     - name: Check coverage
       run: |
-        coverage report --show-missing --fail-under=86
+        coverage report --show-missing --fail-under=95
     - name: Test with dependency matrix
       run: |
        tox

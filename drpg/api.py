@@ -27,14 +27,18 @@ class DrpgApi:
         REQUEST_FAILED = "Got non 2xx response"
 
     def __init__(self, api_key: str):
+        logger.debug("Preparing httpx client")
         self._client = httpx.Client(
             base_url=self.API_URL,
+            http1=False,
+            http2=True,
             timeout=30.0,
             headers={
                 "Content-Type": JSON_MIME,
                 "Accept": JSON_MIME,
                 "Accept-Encoding": "gzip, deflate",
                 "User-Agent": "Mozilla/5.0",
+                "Connection": "keep-alive",
             },
         )
         self._api_key = api_key
@@ -68,7 +72,7 @@ class DrpgApi:
 
         task_params = {
             "siteId": 10,  # Magic number, probably something like storefront ID
-            "index": 0,
+            "index": item_id,
             "getChecksums": 0,  # Official clients defaults to 1
         }
         resp = self._client.get(f"order_products/{product_id}/prepare", params=task_params)
@@ -99,7 +103,7 @@ class DrpgApi:
 
         while (data := _parse_message(resp))["status"].startswith("Preparing"):
             logger.debug("Waiting for download link for: %s - %s", product_id, item_id)
-            sleep(3)
+            sleep(2)
             resp = self._client.get(f"order_products/{product_id}/check", params=task_params)
 
         logger.debug("Got download link for: %s - %s", product_id, item_id)

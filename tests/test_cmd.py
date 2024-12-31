@@ -1,8 +1,11 @@
+import logging
 from inspect import currentframe
 from os.path import expandvars
 from pathlib import Path
 from signal import SIGTERM
 from unittest import TestCase, mock
+
+from httpx import URL
 
 from drpg import cmd
 
@@ -19,7 +22,9 @@ class ParseCliTest(TestCase):
             "DRPG_LIBRARY_PATH": "env/path",
             "DRPG_LOG_LEVEL": "DEBUG",
             "DRPG_USE_CHECKSUMS": "true",
+            "DRPG_VALIDATE": "true",
             "DRPG_DRY_RUN": "true",
+            "DRPG_THREADS": "1",
             "DRPG_COMPATIBILITY_MODE": "true",
             "DRPG_OMIT_PUBLISHER": "true",
         }
@@ -31,7 +36,9 @@ class ParseCliTest(TestCase):
         self.assertEqual(config.library_path, Path(env["DRPG_LIBRARY_PATH"]))
         self.assertEqual(config.log_level, env["DRPG_LOG_LEVEL"])
         self.assertTrue(config.use_checksums)
+        self.assertTrue(config.validate)
         self.assertTrue(config.dry_run)
+        self.assertEqual(config.threads, int(env["DRPG_THREADS"]))
         self.assertTrue(config.compatibility_mode)
         self.assertTrue(config.omit_publisher)
 
@@ -46,6 +53,22 @@ class SignalHandlerTest(TestCase):
     def test_exits(self, m_exit):
         cmd._handle_signal(SIGTERM, currentframe())
         m_exit.assert_called_once_with(0)
+
+
+class SetHttpLogLevel(TestCase):
+    def test_debug(self):
+        cmd._set_httpx_log_level(logging.DEBUG)
+        self.assertEqual(logging.getLogger("httpx").level, logging.DEBUG)
+        self.assertEqual(logging.getLogger("httpcore").level, logging.INFO)
+        self.assertEqual(logging.getLogger("hpack").level, logging.INFO)
+
+    def test_more_than_debug(self):
+        for level in (logging.INFO, logging.WARNING, logging.ERROR):
+            with self.subTest(level=level):
+                cmd._set_httpx_log_level(level)
+                self.assertEqual(logging.getLogger("httpx").level, logging.WARNING)
+                self.assertEqual(logging.getLogger("httpcore").level, logging.WARNING)
+                self.assertEqual(logging.getLogger("hpack").level, logging.WARNING)
 
 
 class DefaultDirTest:
@@ -104,3 +127,58 @@ class MacDefaultDirTest(DefaultDirTest, TestCase):
     def test_default_dir(self):
         default_dir = cmd._default_dir()
         self.assertEqual(default_dir.parent, Path.cwd())
+
+
+class ApplicationKeyFilterTest(TestCase):
+    def test_matching_record(self):
+        secret = "123456789012345"
+        record = logging.LogRecord(
+            name="httpx",
+            level=logging.INFO,
+            pathname="dummy.py",
+            lineno=10,
+            msg="Http request: %s %s %s",
+            args=(
+                "POST",
+                URL(f"https://example.org/?test=1&applicationKey={secret}&dummy=max"),
+                "irrelevant",
+            ),
+            exc_info=None,
+        )
+
+        self.assertIn(secret, record.getMessage())
+        self.assertTrue(cmd.application_key_filter(record))
+        self.assertNotIn(secret, record.getMessage())
+
+    def test_not_matching_record(self):
+        secret = "123456789012345"
+        record = logging.LogRecord(
+            name="httpx",
+            level=logging.INFO,
+            pathname="dummy.py",
+            lineno=10,
+            msg="Http request: %s %s %s",
+            args=(
+                "POST",
+                URL(f"https://example.org/?test=1&secret={secret}&dummy=max"),
+                "irrelevant",
+            ),
+            exc_info=None,
+        )
+
+        self.assertIn(secret, record.getMessage())
+        self.assertTrue(cmd.application_key_filter(record))
+        self.assertIn(secret, record.getMessage())
+
+    def test_silent_exception(self):
+        record = logging.LogRecord(
+            name="httpx",
+            level=logging.INFO,
+            pathname="dummy.py",
+            lineno=10,
+            msg="Log line without params",
+            args=None,
+            exc_info=None,
+        )
+
+        self.assertTrue(cmd.application_key_filter(record))

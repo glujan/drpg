@@ -47,17 +47,15 @@ class DrpgSync:
     """High level DriveThruRPG client that syncs products from a customer's library."""
 
     def __init__(self, config: Config) -> None:
-        self._use_checksums = config.use_checksums
-        self._library_path = config.library_path
-        self._dry_run = config.dry_run
-        self._compatibility_mode = config.compatibility_mode
-        self._omit_publisher = config.omit_publisher
+        self._config = config
         self._api = DrpgApi(config.token)
 
     def sync(self) -> None:
         """Download all new, updated and not yet synced items to a sync directory."""
 
+        logger.info("Authenticating")
         self._api.token()
+        logger.info("Fetching products list")
         process_item_args = (
             (product, item)
             for product in self._api.customer_products()
@@ -65,7 +63,7 @@ class DrpgSync:
             if self._need_download(product, item)
         )
 
-        with ThreadPool(5) as pool:
+        with ThreadPool(self._config.threads) as pool:
             pool.starmap(self._process_item, process_item_args)
         logger.info("Done!")
 
@@ -75,7 +73,7 @@ class DrpgSync:
 
         path = self._file_path(product, item)
 
-        if self._dry_run:
+        if self._config.dry_run:
             logger.info("DRY RUN - would have downloaded file: %s", path)
         else:
             logger.info("Processing: %s - %s", product["name"], item["filename"])
@@ -95,13 +93,27 @@ class DrpgSync:
                 timeout=30.0,
                 follow_redirects=True,
                 headers={
-                    "Accept-Encoding": "gzip, deflate",
+                    "Accept-Encoding": "gzip, deflate, br",
                     "User-Agent": "Mozilla/5.0",
+                    "Accept": "*/*",
                 },
             )
 
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(file_response.content)
+            if (
+                self._config.validate
+                and (api_checksum := _newest_checksum(item))
+                and (local_checksum := md5(file_response.content).hexdigest()) != api_checksum
+            ):
+                logger.error(
+                    "ERROR: Invalid checksum for %s - %s, skipping saving file (%s != %s))",
+                    product["name"],
+                    item["filename"],
+                    api_checksum,
+                    local_checksum,
+                )
+            else:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(file_response.content)
 
     def _need_download(self, product: Product, item: DownloadItem) -> bool:
         """Specify whether or not the item needs to be downloaded."""
@@ -109,6 +121,11 @@ class DrpgSync:
         path = self._file_path(product, item)
 
         if not path.exists():
+            logger.debug(
+                "Needs download: %s - %s: local file does not exist",
+                product["name"],
+                item["filename"],
+            )
             return True
 
         remote_time = datetime.fromisoformat(product["fileLastModified"]).utctimetuple()
@@ -116,14 +133,23 @@ class DrpgSync:
             datetime.fromtimestamp(path.stat().st_mtime) + timedelta(seconds=timezone)
         ).utctimetuple()
         if remote_time > local_time:
+            logger.debug(
+                "Needs download: %s - %s: local file is outdated",
+                product["name"],
+                item["filename"],
+            )
             return True
 
         if (
-            self._use_checksums
+            self._config.use_checksums
             and (checksum := _newest_checksum(item))
             and md5(path.read_bytes()).hexdigest() != checksum
         ):
-            logger.debug("Checksum %s for %s", checksum, product["name"])
+            logger.debug(
+                "Needs download: %s - %s: unmatching checksum",
+                product["name"],
+                item["filename"],
+            )
             return True
 
         logger.info("Up to date: %s - %s", product["name"], item["filename"])
@@ -131,14 +157,14 @@ class DrpgSync:
 
     def _file_path(self, product: Product, item: DownloadItem) -> Path:
         publishers_name = _normalize_path_part(
-            product.get("publisher", {}).get("name", "Others"), self._compatibility_mode
+            product.get("publisher", {}).get("name", "Others"), self._config.compatibility_mode
         )
-        product_name = _normalize_path_part(product["name"], self._compatibility_mode)
-        item_name = _normalize_path_part(item["filename"], self._compatibility_mode)
-        if not self._omit_publisher:
-            return self._library_path / publishers_name / product_name / item_name
+        product_name = _normalize_path_part(product["name"], self._config.compatibility_mode)
+        item_name = _normalize_path_part(item["filename"], self._config.compatibility_mode)
+        if self._config.omit_publisher:
+            return self._config.library_path / product_name / item_name
         else:
-            return self._library_path / product_name / item_name
+            return self._config.library_path / publishers_name / product_name / item_name
 
 
 def _normalize_path_part(part: str, compatibility_mode: bool) -> str:
@@ -166,15 +192,9 @@ def _normalize_path_part(part: str, compatibility_mode: bool) -> str:
     # Since Windows is the lowest common denominator, we use its restrictions on all platforms.
 
     if compatibility_mode:
-        separator = "_"
-        part = re.sub(r"[^a-zA-Z0-9.\s]", separator, part)
-        part = re.sub(r"\s+", " ", part)
+        part = PathNormalizer.normalize_drivethrurpg_compatible(part)
     else:
-        separator = " - "
-        part = html.unescape(part)
-        part = re.sub(r'[<>:"/\\|?*]', separator, part).strip(separator)
-        part = re.sub(f"({separator})+", separator, part)
-        part = re.sub(r"\s+", " ", part)
+        part = PathNormalizer.normalize(part)
     return part
 
 
@@ -184,3 +204,26 @@ def _newest_checksum(item: DownloadItem) -> str | None:
         default={"checksum": None},
         key=lambda s: datetime.fromisoformat(s["checksumDate"]),
     )["checksum"]
+
+
+class PathNormalizer:
+    separator_drpg = " - "
+    multiple_drpg_separators = f"({separator_drpg})+"
+    multiple_whitespaces = re.compile(r"\s+")
+    non_standard_characters = re.compile(r"[^a-zA-Z0-9.\s]")
+
+    @classmethod
+    def normalize_drivethrurpg_compatible(cls, part: str) -> str:
+        separator = "_"
+        part = re.sub(cls.non_standard_characters, separator, part)
+        part = re.sub(cls.multiple_whitespaces, " ", part)
+        return part
+
+    @classmethod
+    def normalize(cls, part: str) -> str:
+        separator = PathNormalizer.separator_drpg
+        part = html.unescape(part)
+        part = re.sub(r'[<>:"/\\|?*]', separator, part).strip(separator)
+        part = re.sub(PathNormalizer.multiple_drpg_separators, separator, part)
+        part = re.sub(PathNormalizer.multiple_whitespaces, " ", part)
+        return part

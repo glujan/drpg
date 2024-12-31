@@ -89,8 +89,11 @@ class DrpgSync:
             if queue_item.action == QueueItemType.GET_PAGE:
                 page, *_ = queue_item.args
                 products = self._api.products(page)
-                product = next(products, None)
-                if product is not None:
+                try:
+                    product = next(products)
+                except StopIteration:
+                    pass
+                else:
                     q.put(QueueItem(QueueItemType.EXTRACT_ITEMS, (product,)))
                     q.put(QueueItem(QueueItemType.GET_PAGE, (page + 1,)))
 
@@ -104,9 +107,7 @@ class DrpgSync:
             elif queue_item.action == QueueItemType.PREPARE_DOWNLOAD_URL:
                 product, item, *_ = queue_item.args
                 ready, url = self._prepare_download_url(product, item)
-                if ready:
-                    if url is None:
-                        logger.info("Skipping, not needed")
+                if ready and url is not None:
                     path = self._file_path(product, item)
                     q.put(QueueItem(QueueItemType.DOWNLOAD, (url, path)))
             elif queue_item.action == QueueItemType.DOWNLOAD:
@@ -146,6 +147,8 @@ class DrpgSync:
         return True, url_data
 
     def _download_from_url(self, url_data: DownloadUrlResponse, path: Path):
+        # TODO Add Read timeout to the call below:
+        # https://www.python-httpx.org/advanced/timeouts/#fine-tuning-the-configuration
         file_response = httpx.get(
             url_data["url"],
             timeout=30.0,

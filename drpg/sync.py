@@ -5,7 +5,6 @@ import enum
 import functools
 import html
 import logging
-import multiprocessing
 import queue
 import re
 from datetime import datetime, timedelta
@@ -19,12 +18,11 @@ import httpx
 from drpg.api import DrpgApi
 
 if TYPE_CHECKING:  # pragma: no cover
-    from collections.abc import Iterator
     from pathlib import Path
     from typing import Callable
 
     from drpg.config import Config
-    from drpg.types import DownloadItem, Product
+    from drpg.types import DownloadItem, DownloadUrlResponse, Product
 
     NoneCallable = Callable[..., None]
     Decorator = Callable[[NoneCallable], NoneCallable]
@@ -62,7 +60,7 @@ class DrpgSync:
         self._api.token()
         logger.info("Fetching products list")
 
-        q = queue.PriorityQueue()
+        q: queue.PriorityQueue = queue.PriorityQueue()
 
         for product in self._api.products(1):
             q.put(QueueItem(QueueItemType.EXTRACT_ITEMS, (product,)))
@@ -81,7 +79,7 @@ class DrpgSync:
 
         logger.info("Done!")
 
-    def _process(self, q: queue.PriorityQueue) -> None:
+    def _process(self, q: queue.PriorityQueue) -> None:  # noqa: C901 XXX
         while True:
             try:
                 queue_item: QueueItem = q.get(block=True, timeout=0.5)
@@ -92,7 +90,7 @@ class DrpgSync:
                 page, *_ = queue_item.args
                 products = self._api.products(page)
                 product = next(products, None)
-                if product:
+                if product is not None:
                     q.put(QueueItem(QueueItemType.EXTRACT_ITEMS, (product,)))
                     q.put(QueueItem(QueueItemType.GET_PAGE, (page + 1,)))
 
@@ -108,24 +106,24 @@ class DrpgSync:
                 ready, url = self._prepare_download_url(product, item)
                 if ready:
                     if url is None:
-                        logger.info("Skipping, not nee")
-                    q.put(QueueItem(QueueItemType.DOWNLOAD, (url,)))
+                        logger.info("Skipping, not needed")
+                    path = self._file_path(product, item)
+                    q.put(QueueItem(QueueItemType.DOWNLOAD, (url, path)))
             elif queue_item.action == QueueItemType.DOWNLOAD:
-                download_url, *_ = queue_item.args
-                # TODO
+                url_data, path, *_ = queue_item.args
+                self._download_from_url(url_data, path)
             q.task_done()
 
     #  @suppress_errors(httpx.HTTPError, PermissionError)
     def _prepare_download_url(
         self, product: Product, item: DownloadItem
-    ) -> tuple[bool, str | None]:
+    ) -> tuple[bool, DownloadUrlResponse | None]:
         """Prepare for and download the item to the sync directory."""
         if not self._need_download(product, item):
             return True, None
 
-        path = self._file_path(product, item)
-
         if self._config.dry_run:
+            path = self._file_path(product, item)
             logger.info("DRY RUN - would have downloaded file: %s", path)
             return True, None
 
@@ -141,11 +139,13 @@ class DrpgSync:
             return True, None  # TODO Maybe retry downloading the item?
 
         if url_data["status"].startswith("Preparing"):
-            logger.debug("Waiting for download link for: %s - %s", product_id, item_id)
+            logger.debug(
+                "Waiting for download link for: %s - %s", product["name"], item["filename"]
+            )
             return False, None
-        return True, url_data["url"]
+        return True, url_data
 
-    def _download_from_url(self, url):
+    def _download_from_url(self, url_data: DownloadUrlResponse, path: Path):
         file_response = httpx.get(
             url_data["url"],
             timeout=30.0,
@@ -156,18 +156,14 @@ class DrpgSync:
                 "Accept": "*/*",
             },
         )
+        if not file_response.is_success:
+            logger.error("ERROR: Invalid download for %s", url_data["filename"])
 
-        if (
-            self._config.validate
-            and (api_checksum := _newest_checksum(item))
-            and (local_checksum := md5(file_response.content).hexdigest()) != api_checksum
+        if self._config.validate and (
+            url_data["lastChecksum"] != md5(file_response.content).hexdigest()
         ):
             logger.error(
-                "ERROR: Invalid checksum for %s - %s, skipping saving file (%s != %s))",
-                product["name"],
-                item["filename"],
-                api_checksum,
-                local_checksum,
+                "ERROR: Invalid checksum for %s, skipping saving file", url_data["filename"]
             )
         else:
             path.parent.mkdir(parents=True, exist_ok=True)

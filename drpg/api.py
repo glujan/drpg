@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import logging
-from time import sleep
 from typing import TYPE_CHECKING, cast
 
 import httpx
 
-from drpg.types import PrepareDownloadUrlResponse
+from drpg.types import DownloadUrlResponse
 
 if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Iterator
@@ -58,11 +57,23 @@ class DrpgApi:
         return login_data
 
     def products(self, page: int = 1, per_page: int = 50) -> Iterator[Product]:
+        """List products from a specified page."""
         logger.debug("Yielding products page %d", page)
-        result = self._product_page(page, per_page)
+        result = self._client.get(
+            "order_products",
+            params={
+                "getChecksum": 1,
+                "getFilters": 0,  # Official clients defaults to 1
+                "page": page,
+                "pageSize": per_page,
+                "library": 1,
+                "archived": 0,
+            },
+        ).json()
+
         yield from result
 
-    def prepare_download_url(self, product_id: int, item_id: int) -> PrepareDownloadUrlResponse:
+    def prepare_download_url(self, product_id: int, item_id: int) -> DownloadUrlResponse:
         """
         Prepare a download link and metadata for a product's item.
 
@@ -80,35 +91,20 @@ class DrpgApi:
         logger.debug("Got download link for: %s - %s", product_id, item_id)
         return self._parse_message(resp, product_id, item_id)
 
-    def check_download_url(self, product_id: int, item_id: int) -> PrepareDownloadUrlResponse:
+    def check_download_url(self, product_id: int, item_id: int) -> DownloadUrlResponse:
         task_params = {
             "siteId": 10,  # Magic number, probably something like storefront ID
             "index": item_id,
-            "getChecksums": 0,  # Official clients defaults to 1
+            "getChecksums": 1,
         }
         resp = self._client.get(f"order_products/{product_id}/check", params=task_params)
         logger.debug("Checked download link for: %s - %s", product_id, item_id)
         return self._parse_message(resp, product_id, item_id)
 
-    def _product_page(self, page: int, per_page: int) -> list[Product]:
-        """List products from a specified page."""
-
-        return self._client.get(
-            "order_products",
-            params={
-                "getChecksum": 1,
-                "getFilters": 0,  # Official clients defaults to 1
-                "page": page,
-                "pageSize": per_page,
-                "library": 1,
-                "archived": 0,
-            },
-        ).json()
-
-    def _parse_message(self, resp, product_id: int, item_id: int) -> PrepareDownloadUrlResponse:
-        message: PrepareDownloadUrlResponse = resp.json()
+    def _parse_message(self, resp, product_id: int, item_id: int) -> DownloadUrlResponse:
+        message: DownloadUrlResponse = resp.json()
         if resp.is_success:
-            expected_keys = PrepareDownloadUrlResponse.__required_keys__
+            expected_keys = DownloadUrlResponse.__required_keys__
             if isinstance(message, dict) and expected_keys.issubset(message.keys()):
                 logger.debug(
                     "Got download url for %s - %s, status='%s'",
@@ -134,4 +130,4 @@ class DrpgApi:
                 message,
             )
             raise self.PrepareDownloadUrlException(self.PrepareDownloadUrlException.REQUEST_FAILED)
-        return cast(PrepareDownloadUrlResponse, message)
+        return cast(DownloadUrlResponse, message)

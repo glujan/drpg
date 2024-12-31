@@ -13,7 +13,7 @@ import drpg.sync
 from drpg import types
 from drpg.api import DrpgApi
 
-from .fixtures import PrepareDownloadUrlResponseFixture
+from .fixtures import DownloadUrlResponseFixture
 
 
 class dummy_config:
@@ -184,7 +184,7 @@ class DrpgSyncFilePathTest(TestCase):
 
 
 class DrpgSyncProcessItemTest(TestCase):
-    download_url = PrepareDownloadUrlResponseFixture.complete()
+    download_url = DownloadUrlResponseFixture.complete()
     content = b"content"
 
     def setUp(self):

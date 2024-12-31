@@ -8,7 +8,7 @@ from httpx import Response
 
 from drpg import api
 
-from .fixtures import PrepareDownloadUrlResponseFixture
+from .fixtures import DownloadUrlResponseFixture
 
 _api_url = urlparse(api.DrpgApi.API_URL)
 api_base_url = f"{_api_url.scheme}://{_api_url.hostname}"
@@ -83,8 +83,8 @@ class DrpgApiPrepareDownloadUrlTest(TestCase):
             f"/api/vBeta/order_products/{self.order_product_id}/check?{params}"
         )
 
-        self.response_preparing = PrepareDownloadUrlResponseFixture.preparing()
-        self.response_ready = PrepareDownloadUrlResponseFixture.complete()
+        self.response_preparing = DownloadUrlResponseFixture.preparing()
+        self.response_ready = DownloadUrlResponseFixture.complete()
 
         self.client = api.DrpgApi("token")
 

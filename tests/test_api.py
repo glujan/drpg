@@ -54,7 +54,7 @@ class DrpgApiCustomerProductsTest(TestCase):
             ]
         )
 
-        products = self.client.customer_products()
+        products = self.client.products()
         self.assertEqual(list(products), page_1_products)
 
     @tmp_respx_mock(base_url=api_base_url)
@@ -68,7 +68,7 @@ class DrpgApiCustomerProductsTest(TestCase):
                 Response(200, json=[]),
             ]
         )
-        products = self.client.customer_products()
+        products = self.client.products()
         self.assertEqual(list(products), page_1_products + page_2_products)
 
 

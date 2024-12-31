@@ -57,34 +57,18 @@ class DrpgApi:
         self._client.headers["Authorization"] = login_data["token"]
         return login_data
 
-    def products(
-        self, page: int = 1, per_page: int = 50, /, recursive: bool = False
-    ) -> Iterator[Product]:
-        result = self._product_page(page, per_page)
+    def products(self, page: int = 1, per_page: int = 50) -> Iterator[Product]:
         logger.debug("Yielding products page %d", page)
+        result = self._product_page(page, per_page)
         yield from result
 
-        if not recursive:
-            return
-
-        page += 1
-        while result := self._product_page(page, per_page):
-            logger.debug("Yielding products page %d", page)
-            yield from result
-            page += 1
-
-    def customer_products(self, per_page: int = 50) -> Iterator[Product]:  # XXX
-        """List all not archived customer's products."""
-
-        page = 1
-
-        while result := self._product_page(page, per_page):
-            logger.debug("Yielding products page %d", page)
-            yield from result
-            page += 1
-
     def prepare_download_url(self, product_id: int, item_id: int) -> PrepareDownloadUrlResponse:
-        """Generate a download link and metadata for a product's item."""
+        """
+        Prepare a download link and metadata for a product's item.
+
+        Download link does not need to be ready immediately - if it's not,
+        run check_download_url until it's ready.
+        """
 
         task_params = {
             "siteId": 10,  # Magic number, probably something like storefront ID
@@ -93,46 +77,18 @@ class DrpgApi:
         }
         resp = self._client.get(f"order_products/{product_id}/prepare", params=task_params)
 
-        def _parse_message(resp) -> PrepareDownloadUrlResponse:
-            message: PrepareDownloadUrlResponse = resp.json()
-            if resp.is_success:
-                expected_keys = PrepareDownloadUrlResponse.__required_keys__
-                if isinstance(message, dict) and expected_keys.issubset(message.keys()):
-                    logger.debug(
-                        "Got download url for %s - %s, status='%s'",
-                        product_id,
-                        item_id,
-                        message["status"],
-                    )
-                else:
-                    logger.debug(
-                        "Got unexpected message when getting download url for %s - %s: %s",
-                        product_id,
-                        item_id,
-                        message,
-                    )
-                    raise self.PrepareDownloadUrlException(
-                        self.PrepareDownloadUrlException.UNEXPECTED_RESPONSE
-                    )
-            else:
-                logger.debug(
-                    "Could not get download link for %s - %s: %s",
-                    product_id,
-                    item_id,
-                    message,
-                )
-                raise self.PrepareDownloadUrlException(
-                    self.PrepareDownloadUrlException.REQUEST_FAILED
-                )
-            return cast(PrepareDownloadUrlResponse, message)
-
-        while (data := _parse_message(resp))["status"].startswith("Preparing"):
-            logger.debug("Waiting for download link for: %s - %s", product_id, item_id)
-            sleep(2)
-            resp = self._client.get(f"order_products/{product_id}/check", params=task_params)
-
         logger.debug("Got download link for: %s - %s", product_id, item_id)
-        return data
+        return self._parse_message(resp, product_id, item_id)
+
+    def check_download_url(self, product_id: int, item_id: int) -> PrepareDownloadUrlResponse:
+        task_params = {
+            "siteId": 10,  # Magic number, probably something like storefront ID
+            "index": item_id,
+            "getChecksums": 0,  # Official clients defaults to 1
+        }
+        resp = self._client.get(f"order_products/{product_id}/check", params=task_params)
+        logger.debug("Checked download link for: %s - %s", product_id, item_id)
+        return self._parse_message(resp, product_id, item_id)
 
     def _product_page(self, page: int, per_page: int) -> list[Product]:
         """List products from a specified page."""
@@ -148,3 +104,34 @@ class DrpgApi:
                 "archived": 0,
             },
         ).json()
+
+    def _parse_message(self, resp, product_id: int, item_id: int) -> PrepareDownloadUrlResponse:
+        message: PrepareDownloadUrlResponse = resp.json()
+        if resp.is_success:
+            expected_keys = PrepareDownloadUrlResponse.__required_keys__
+            if isinstance(message, dict) and expected_keys.issubset(message.keys()):
+                logger.debug(
+                    "Got download url for %s - %s, status='%s'",
+                    product_id,
+                    item_id,
+                    message["status"],
+                )
+            else:
+                logger.debug(
+                    "Got unexpected message when getting download url for %s - %s: %s",
+                    product_id,
+                    item_id,
+                    message,
+                )
+                raise self.PrepareDownloadUrlException(
+                    self.PrepareDownloadUrlException.UNEXPECTED_RESPONSE
+                )
+        else:
+            logger.debug(
+                "Could not get download link for %s - %s: %s",
+                product_id,
+                item_id,
+                message,
+            )
+            raise self.PrepareDownloadUrlException(self.PrepareDownloadUrlException.REQUEST_FAILED)
+        return cast(PrepareDownloadUrlResponse, message)

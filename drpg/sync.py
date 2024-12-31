@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import dataclasses
+import enum
 import functools
 import html
 import logging
@@ -10,15 +12,16 @@ from datetime import datetime, timedelta
 from hashlib import md5
 from multiprocessing.pool import ThreadPool
 from time import timezone
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import httpx
 
 from drpg.api import DrpgApi
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Iterator
     from pathlib import Path
-    from typing import Any, Callable
+    from typing import Callable
 
     from drpg.config import Config
     from drpg.types import DownloadItem, Product
@@ -59,122 +62,117 @@ class DrpgSync:
         self._api.token()
         logger.info("Fetching products list")
 
-        product_queue: multiprocessing.JoinableQueue = multiprocessing.JoinableQueue()
-        item_queue: multiprocessing.JoinableQueue = multiprocessing.JoinableQueue()
+        q = queue.PriorityQueue()
 
-        def put_to_queue(iterator):
-            for product in iterator:
-                product_queue.put(product)
-
-        put_to_queue(self._api.products(1, 50, recursive=False))
+        for product in self._api.products(1):
+            q.put(QueueItem(QueueItemType.EXTRACT_ITEMS, (product,)))
 
         pool = ThreadPool(self._config.threads)
-        fetch_products = pool.apply_async(
-            self._api.products,
-            (2, 50),
-            {"recursive": True},
-            callback=put_to_queue,
-            error_callback=print,
-        )
-        pool.apply_async(
-            self._process_products,
-            (product_queue, item_queue),
-            error_callback=print,
-        )
+        q.put(QueueItem(QueueItemType.GET_PAGE, (2,)))
 
         pool.starmap_async(
-            self._process_item,
-            ((item_queue,) for _ in range(self._config.threads - 2)),
-            error_callback=print,
+            self._process,
+            ((q,) for _ in range(self._config.threads)),
+            error_callback=print,  # TODO Add a real errback
         )
 
-        fetch_products.wait()
-        print("fetch_products waited")
-        product_queue.join()
-        print("product_queue joined")
-        item_queue.join()
-        print("item_queue joined")
+        q.join()
         pool.terminate()
-        print("pool terminated")
 
         logger.info("Done!")
 
-    def _process_products(
-        self,
-        product_queue: multiprocessing.JoinableQueue,
-        item_queue: multiprocessing.JoinableQueue,
-    ) -> None:
+    def _process(self, q: queue.PriorityQueue) -> None:
         while True:
             try:
-                product: Product = product_queue.get(block=True, timeout=0.5)
+                queue_item: QueueItem = q.get(block=True, timeout=0.5)
             except queue.Empty:
                 continue
-            for item in product["files"]:
-                item_queue.put((product, item))
-            product_queue.task_done()
+
+            if queue_item.action == QueueItemType.GET_PAGE:
+                page, *_ = queue_item.args
+                products = self._api.products(page)
+                product = next(products, None)
+                if product:
+                    q.put(QueueItem(QueueItemType.EXTRACT_ITEMS, (product,)))
+                    q.put(QueueItem(QueueItemType.GET_PAGE, (page + 1,)))
+
+                for product in products:
+                    q.put(QueueItem(QueueItemType.EXTRACT_ITEMS, (product,)))
+
+            elif queue_item.action == QueueItemType.EXTRACT_ITEMS:
+                product, *_ = queue_item.args
+                for item in product["files"]:
+                    q.put(QueueItem(QueueItemType.PREPARE_DOWNLOAD_URL, (product, item)))
+            elif queue_item.action == QueueItemType.PREPARE_DOWNLOAD_URL:
+                product, item, *_ = queue_item.args
+                ready, url = self._prepare_download_url(product, item)
+                if ready:
+                    if url is None:
+                        logger.info("Skipping, not nee")
+                    q.put(QueueItem(QueueItemType.DOWNLOAD, (url,)))
+            elif queue_item.action == QueueItemType.DOWNLOAD:
+                download_url, *_ = queue_item.args
+                # TODO
+            q.task_done()
 
     #  @suppress_errors(httpx.HTTPError, PermissionError)
-    def _process_item(self, item_queue: multiprocessing.JoinableQueue) -> None:
+    def _prepare_download_url(
+        self, product: Product, item: DownloadItem
+    ) -> tuple[bool, str | None]:
         """Prepare for and download the item to the sync directory."""
-        product: Product
-        item: DownloadItem
-        while True:
-            try:
-                product, item = item_queue.get(block=True, timeout=0.5)
-            except queue.Empty:
-                continue
+        if not self._need_download(product, item):
+            return True, None
 
-            if not self._need_download(product, item):
-                item_queue.task_done()
-                continue
+        path = self._file_path(product, item)
 
-            path = self._file_path(product, item)
+        if self._config.dry_run:
+            logger.info("DRY RUN - would have downloaded file: %s", path)
+            return True, None
 
-            if self._config.dry_run:
-                logger.info("DRY RUN - would have downloaded file: %s", path)
-                item_queue.task_done()
-                continue
-
-            logger.info("Processing: %s - %s", product["name"], item["filename"])
-            try:
-                url_data = self._api.prepare_download_url(product["orderProductId"], item["index"])
-            except self._api.PrepareDownloadUrlException:
-                logger.warning(
-                    "Could not download product: %s - %s",
-                    product["name"],
-                    item["filename"],
-                )
-                item_queue.task_done()
-                continue  # TODO Maybe retry downloading the item?
-
-            file_response = httpx.get(
-                url_data["url"],
-                timeout=30.0,
-                follow_redirects=True,
-                headers={
-                    "Accept-Encoding": "gzip, deflate, br",
-                    "User-Agent": "Mozilla/5.0",
-                    "Accept": "*/*",
-                },
+        logger.info("Processing: %s - %s", product["name"], item["filename"])
+        try:
+            url_data = self._api.prepare_download_url(product["orderProductId"], item["index"])
+        except self._api.PrepareDownloadUrlException:
+            logger.warning(
+                "Could not download product: %s - %s",
+                product["name"],
+                item["filename"],
             )
+            return True, None  # TODO Maybe retry downloading the item?
 
-            if (
-                self._config.validate
-                and (api_checksum := _newest_checksum(item))
-                and (local_checksum := md5(file_response.content).hexdigest()) != api_checksum
-            ):
-                logger.error(
-                    "ERROR: Invalid checksum for %s - %s, skipping saving file (%s != %s))",
-                    product["name"],
-                    item["filename"],
-                    api_checksum,
-                    local_checksum,
-                )
-            else:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_bytes(file_response.content)
-                logger.info("Writing to %s", path)
-            item_queue.task_done()
+        if url_data["status"].startswith("Preparing"):
+            logger.debug("Waiting for download link for: %s - %s", product_id, item_id)
+            return False, None
+        return True, url_data["url"]
+
+    def _download_from_url(self, url):
+        file_response = httpx.get(
+            url_data["url"],
+            timeout=30.0,
+            follow_redirects=True,
+            headers={
+                "Accept-Encoding": "gzip, deflate, br",
+                "User-Agent": "Mozilla/5.0",
+                "Accept": "*/*",
+            },
+        )
+
+        if (
+            self._config.validate
+            and (api_checksum := _newest_checksum(item))
+            and (local_checksum := md5(file_response.content).hexdigest()) != api_checksum
+        ):
+            logger.error(
+                "ERROR: Invalid checksum for %s - %s, skipping saving file (%s != %s))",
+                product["name"],
+                item["filename"],
+                api_checksum,
+                local_checksum,
+            )
+        else:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(file_response.content)
+            logger.info("Writing to %s", path)
 
     def _need_download(self, product: Product, item: DownloadItem) -> bool:
         """Specify whether or not the item needs to be downloaded."""
@@ -288,3 +286,17 @@ class PathNormalizer:
         part = re.sub(PathNormalizer.multiple_drpg_separators, separator, part)
         part = re.sub(PathNormalizer.multiple_whitespaces, " ", part)
         return part
+
+
+class QueueItemType(enum.IntEnum):
+    GET_PAGE = 1
+    EXTRACT_ITEMS = 2
+    PREPARE_DOWNLOAD_URL = 3
+    CHECK_DOWNLOAD_URL = 3
+    DOWNLOAD = 4
+
+
+@dataclasses.dataclass(order=True)
+class QueueItem:
+    action: QueueItemType
+    args: tuple[Any, ...] = dataclasses.field(compare=False, default_factory=tuple)

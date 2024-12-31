@@ -79,8 +79,8 @@ class DrpgSync:
             logger.info("Processing: %s - %s", product["name"], item["filename"])
 
             try:
-                url_data = self._api.file_task(product["orderProductId"], item["index"])
-            except self._api.FileTaskException:
+                url_data = self._api.prepare_download_url(product["orderProductId"], item["index"])
+            except self._api.PrepareDownloadUrlException:
                 logger.warning(
                     "Could not download product: %s - %s",
                     product["name"],

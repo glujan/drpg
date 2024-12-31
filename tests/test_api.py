@@ -8,7 +8,7 @@ from httpx import Response
 
 from drpg import api
 
-from .fixtures import FileTaskResponseFixture
+from .fixtures import PrepareDownloadUrlResponseFixture
 
 _api_url = urlparse(api.DrpgApi.API_URL)
 api_base_url = f"{_api_url.scheme}://{_api_url.hostname}"
@@ -72,7 +72,7 @@ class DrpgApiCustomerProductsTest(TestCase):
         self.assertEqual(list(products), page_1_products + page_2_products)
 
 
-class DrpgApiFileTaskTest(TestCase):
+class DrpgApiPrepareDownloadUrlTest(TestCase):
     def setUp(self):
         self.order_product_id = 123
         params = urlencode({"siteId": 10, "index": 0, "getChecksums": 0})
@@ -83,8 +83,8 @@ class DrpgApiFileTaskTest(TestCase):
             f"/api/vBeta/order_products/{self.order_product_id}/check?{params}"
         )
 
-        self.response_preparing = FileTaskResponseFixture.preparing()
-        self.response_ready = FileTaskResponseFixture.complete()
+        self.response_preparing = PrepareDownloadUrlResponseFixture.preparing()
+        self.response_ready = PrepareDownloadUrlResponseFixture.complete()
 
         self.client = api.DrpgApi("token")
 
@@ -92,7 +92,7 @@ class DrpgApiFileTaskTest(TestCase):
     def test_immiediate_download_url(self, respx_mock):
         respx_mock.get(self.prepare_download_url).respond(200, json=self.response_ready)
 
-        file_data = self.client.file_task(self.order_product_id, 0)
+        file_data = self.client.prepare_download_url(self.order_product_id, 0)
         self.assertEqual(file_data, self.response_ready)
 
     @mock.patch("drpg.api.sleep")
@@ -101,7 +101,7 @@ class DrpgApiFileTaskTest(TestCase):
         respx_mock.get(self.prepare_download_url).respond(200, json=self.response_preparing)
         respx_mock.get(self.check_download_url).respond(200, json=self.response_ready)
 
-        file_data = self.client.file_task(self.order_product_id, 0)
+        file_data = self.client.prepare_download_url(self.order_product_id, 0)
         self.assertEqual(file_data, self.response_ready)
 
     @tmp_respx_mock(base_url=api_base_url)
@@ -109,19 +109,21 @@ class DrpgApiFileTaskTest(TestCase):
         dummy_400_response = {"message": "Invalid product id"}
         respx_mock.get(self.prepare_download_url).respond(400, json=dummy_400_response)
 
-        with self.assertRaises(self.client.FileTaskException) as cm:
-            self.client.file_task(self.order_product_id, 0)
-        self.assertTupleEqual(cm.exception.args, (self.client.FileTaskException.REQUEST_FAILED,))
+        with self.assertRaises(self.client.PrepareDownloadUrlException) as cm:
+            self.client.prepare_download_url(self.order_product_id, 0)
+        self.assertTupleEqual(
+            cm.exception.args, (self.client.PrepareDownloadUrlException.REQUEST_FAILED,)
+        )
 
     @tmp_respx_mock(base_url=api_base_url)
     def test_unexpected_response_with_string_message(self, respx_mock):
         dummy_unexpected_response = {"message": "Invalid product id"}
         respx_mock.get(self.prepare_download_url).respond(200, json=dummy_unexpected_response)
 
-        with self.assertRaises(self.client.FileTaskException) as cm:
-            self.client.file_task(self.order_product_id, 0)
+        with self.assertRaises(self.client.PrepareDownloadUrlException) as cm:
+            self.client.prepare_download_url(self.order_product_id, 0)
         self.assertTupleEqual(
-            cm.exception.args, (self.client.FileTaskException.UNEXPECTED_RESPONSE,)
+            cm.exception.args, (self.client.PrepareDownloadUrlException.UNEXPECTED_RESPONSE,)
         )
 
     @tmp_respx_mock(base_url=api_base_url)
@@ -129,8 +131,8 @@ class DrpgApiFileTaskTest(TestCase):
         dummy_unexpected_response = {"message": {"reason": "Invalid product id"}}
         respx_mock.get(self.prepare_download_url).respond(200, json=dummy_unexpected_response)
 
-        with self.assertRaises(self.client.FileTaskException) as cm:
-            self.client.file_task(self.order_product_id, 0)
+        with self.assertRaises(self.client.PrepareDownloadUrlException) as cm:
+            self.client.prepare_download_url(self.order_product_id, 0)
         self.assertTupleEqual(
-            cm.exception.args, (self.client.FileTaskException.UNEXPECTED_RESPONSE,)
+            cm.exception.args, (self.client.PrepareDownloadUrlException.UNEXPECTED_RESPONSE,)
         )

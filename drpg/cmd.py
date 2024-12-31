@@ -71,6 +71,7 @@ def _parse_cli(args: CliArgs | None = None) -> Config:
     )
     parser.add_argument(
         "--validate",
+        "-v",
         action="store_true",
         default=environ.get("DRPG_VALIDATE", "false").lower() == "true",
         help="Validate downloads by calculating checksums",

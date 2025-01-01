@@ -21,7 +21,7 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: CPython",
 ]
 dependencies = [
-    "httpx[http2]>=0.20",
+    "httpx[http2]>=0.23",
 ]
 
 [project.optional-dependencies]

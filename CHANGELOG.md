@@ -1,10 +1,16 @@
 # Changelog
 
+## Unreleased
+* add `--validate` that checks if downloaded file has correct checksums
+* add `--threads` to allow user to specify a number of threads
+* use HTTP2 for API communication
+* support httpx 0.23-0.28+
+
 ## 2024.12.19
 * rewrite client to use new API
 
 ## 2024.11.8
-* add `--omit-publisher`
+* add `--omit-publisher` - allows flat directory structure
 * support Python 3.9-3.13
 * test on Python 3.14 alpha
 * support httpx 0.21-0.27+

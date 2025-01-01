@@ -4,9 +4,9 @@
 #
 #    pip-compile --output-file=requirements.txt
 #
-anyio==4.6.2.post1
+anyio==4.7.0
     # via httpx
-certifi==2024.8.30
+certifi==2024.12.14
     # via
     #   httpcore
     #   httpx
@@ -20,7 +20,7 @@ hpack==4.0.0
     # via h2
 httpcore==1.0.7
     # via httpx
-httpx[http2]==0.28.0
+httpx[http2]==0.28.1
     # via drpg (pyproject.toml)
 hyperframe==6.0.1
     # via h2

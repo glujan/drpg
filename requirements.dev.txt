@@ -4,7 +4,7 @@
 #
 #    pip-compile --extra=dev --output-file=requirements.dev.txt
 #
-anyio==4.6.2.post1
+anyio==4.7.0
     # via httpx
 build==1.2.2.post1
     # via
@@ -12,17 +12,17 @@ build==1.2.2.post1
     #   pip-tools
 cachetools==5.5.0
     # via tox
-certifi==2024.8.30
+certifi==2024.12.14
     # via
     #   httpcore
     #   httpx
 chardet==5.2.0
     # via tox
-click==8.1.7
+click==8.1.8
     # via pip-tools
 colorama==0.4.6
     # via tox
-coverage[toml]==7.6.8
+coverage[toml]==7.6.10
     # via drpg (pyproject.toml)
 distlib==0.3.9
     # via virtualenv
@@ -42,7 +42,7 @@ hpack==4.0.0
     # via h2
 httpcore==1.0.7
     # via httpx
-httpx[http2]==0.28.0
+httpx[http2]==0.28.1
     # via
     #   drpg (pyproject.toml)
     #   respx
@@ -79,7 +79,7 @@ pyproject-hooks==1.2.0
     # via
     #   build
     #   pip-tools
-respx==0.21.1
+respx==0.22.0
     # via drpg (pyproject.toml)
 sniffio==1.3.1
     # via anyio

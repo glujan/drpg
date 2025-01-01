@@ -1,6 +1,8 @@
 # Changelog
 
 ## Unreleased
+
+## 2025.1.1
 * add `--validate` that checks if downloaded file has correct checksums
 * add `--threads` to allow user to specify a number of threads
 * use HTTP2 for API communication

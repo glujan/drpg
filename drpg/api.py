@@ -84,7 +84,7 @@ class DrpgApi:
         task_params = {
             "siteId": 10,  # Magic number, probably something like storefront ID
             "index": item_id,
-            "getChecksums": 0,  # Official clients defaults to 1
+            "getChecksums": 1,
         }
         resp = self._client.get(f"order_products/{product_id}/prepare", params=task_params)
 

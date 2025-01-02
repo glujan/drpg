@@ -24,7 +24,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from drpg.config import Config
     from drpg.types import DownloadItem, DownloadUrlResponse, Product
 
-    NoneCallable = Callable[..., None]
+    NoneCallable = Callable[..., Any]
     Decorator = Callable[[NoneCallable], NoneCallable]
 
 logger = logging.getLogger("drpg")
@@ -115,7 +115,7 @@ class DrpgSync:
                 self._download_from_url(url_data, path)
             q.task_done()
 
-    #  @suppress_errors(httpx.HTTPError, PermissionError)
+    @suppress_errors(httpx.HTTPError, PermissionError)
     def _prepare_download_url(
         self, product: Product, item: DownloadItem
     ) -> tuple[bool, DownloadUrlResponse | None]:
@@ -146,6 +146,7 @@ class DrpgSync:
             return False, None
         return True, url_data
 
+    @suppress_errors(httpx.HTTPError, PermissionError)
     def _download_from_url(self, url_data: DownloadUrlResponse, path: Path):
         # TODO Add Read timeout to the call below:
         # https://www.python-httpx.org/advanced/timeouts/#fine-tuning-the-configuration
@@ -161,8 +162,7 @@ class DrpgSync:
         )
         if not file_response.is_success:
             logger.error("ERROR: Invalid download for %s", url_data["filename"])
-
-        if self._config.validate and (
+        elif self._config.validate and (
             url_data["lastChecksum"] != md5(file_response.content).hexdigest()
         ):
             logger.error(

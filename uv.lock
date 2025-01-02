@@ -159,7 +159,6 @@ build = [
 ci = [
     { name = "coverage", extra = ["toml"] },
     { name = "flake8" },
-    { name = "pyinstaller", marker = "python_full_version != '3.14.*'" },
     { name = "respx" },
     { name = "tox" },
     { name = "tox-gh-actions" },
@@ -179,7 +178,6 @@ build = [{ name = "pyinstaller", marker = "python_full_version != '3.14.*'" }]
 ci = [
     { name = "coverage", extras = ["toml"] },
     { name = "flake8" },
-    { name = "pyinstaller", marker = "python_full_version != '3.14.*'" },
     { name = "respx" },
     { name = "tox" },
     { name = "tox-gh-actions" },

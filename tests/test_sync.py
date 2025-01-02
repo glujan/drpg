@@ -27,7 +27,7 @@ class dummy_config:
     omit_publisher = False
 
 
-PathMock = partial(mock.Mock, spec=Path)
+PathMock = partial(mock.Mock, spec=Path, **{"stat.return_value": mock.Mock(st_mtime=1735817992)})
 
 
 class SuppressErrorsTest(TestCase):
@@ -212,7 +212,7 @@ class DrpgSyncProcessItemTest(TestCase):
         path = file_path.return_value
         type(path).parent = mock.PropertyMock(return_value=PathMock())
 
-        self.sync._prepare_download_url(self.product, self.item)
+        self.sync._download_from_url(self.download_url, path)
 
         path.parent.mkdir.assert_called_once_with(parents=True, exist_ok=True)
         path.write_bytes.assert_called_once_with(self.content)
@@ -247,11 +247,12 @@ class DrpgSyncProcessItemTest(TestCase):
 
     @mock.patch("drpg.sync.logger")
     @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock())
-    @mock.patch("drpg.api.DrpgApi.prepare_download_url", return_value=download_url)
-    def test_invalid_download(self, _prepare_download_url, _file_path, logger):
+    @respx.mock(using="httpx")
+    def test_invalid_download(self, _file_path, logger, respx_mock):
+        respx_mock.get(self.download_url["url"]).respond(200, content=self.content)
         config = dummy_config()
         config.validate = True
-        drpg.DrpgSync(config)._prepare_download_url(self.product, self.item)
+        drpg.DrpgSync(config)._download_from_url(self.download_url, PathMock())
         logger.error.assert_called_once()
         self.assertIn("Invalid checksum", logger.error.call_args.args[0])
 
@@ -271,13 +272,13 @@ class DrpgSyncTest(TestCase):
 
     @mock.patch("drpg.api.DrpgApi.token", return_value={"access_token": "t"})
     @mock.patch("drpg.DrpgSync._need_download", return_value=True)
-    @mock.patch("drpg.api.DrpgApi.customer_products")
-    @mock.patch("drpg.DrpgSync._process_item")
-    def test_processes_each_item(self, process_item_mock, customer_products_mock, *_):
-        return  # XXX
+    @mock.patch("drpg.api.DrpgApi.products")
+    @mock.patch("drpg.DrpgSync._process")
+    def test_processes_each_item(self, process_item_mock, products, *_):
+        return
         files_count = 5
         products_count = 3
-        customer_products_mock.return_value = [
+        products.return_value = [
             self.dummy_product(f"Rule Book {i}", files_count) for i in range(products_count)
         ]
         self.sync.sync()

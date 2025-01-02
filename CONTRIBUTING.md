@@ -66,6 +66,19 @@ Then you can do a test run like this:
 python -m drpg --dry-run --token <whatever> --library-path <whatever>
 ```
 
+### Building a binary distribution
+
+Stand-alone executables are generated using PyInstaller. To generate a binary
+for your platform run:
+
+```bash
+source venv/bin/activate
+pyinstaller pyinstaller-linux.spec # If you run on Linux
+pyinstaller pyinstaller-macos.spec # If you run on MacOS
+```
+
+The binary will be saved in a `dist/` directory.
+
 ## Configuring mitmproxy
 
 1. Set up and run mitmproxy

@@ -59,6 +59,12 @@ jobs:
         with:
           name: release-dists
           path: dist/
+      - name: Install pyinstaller
+        run: |
+          python -m pip install -r requirements.dev.txt
+      - name: Build Linux binary
+        run: |
+          pyinstaller pyinstaller-linux.spec
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
@@ -68,3 +74,4 @@ jobs:
           files: |
             dist/drpg-${{github.ref_name}}-py3-none-any.whl
             dist/drpg-${{github.ref_name}}.tar.gz
+            dist/drpg-linux-x86_64

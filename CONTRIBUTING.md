@@ -18,10 +18,10 @@ Please provide tests for the code you are contributing.
 
 ### Prerequisites
 
-As a first step, you need to create a new virtualenv and install development
-dependencies:
+As a first step, you need to install `uv`, and install development dependencies:
 
 ```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
 uv sync
 ```
 
@@ -50,15 +50,14 @@ The wheel and source distribution will be saved in a `dist/` directory.
 If you want to test the wheel you just created, install it in your project, like this:
 
 ```bash
-source venv/bin/activate
-pip install dist/drpg-2023.6.12.dev0-py3-none-any.whl --force-reinstall
+uv pip install dist/drpg-2023.6.12.dev0-py3-none-any.whl --force-reinstall
 ```
 Use the name of your own `.whl` file, of course.
 
 Then you can do a test run like this:
 
 ```bash
-python -m drpg --dry-run --token <whatever> --library-path <whatever>
+uv run python -m drpg --dry-run --token <whatever> --library-path <whatever>
 ```
 
 ### Building a binary distribution
@@ -67,9 +66,8 @@ Stand-alone executables are generated using PyInstaller. To generate a binary
 for your platform run:
 
 ```bash
-source venv/bin/activate
-pyinstaller pyinstaller-linux.spec # If you run on Linux
-pyinstaller pyinstaller-macos.spec # If you run on MacOS
+uv run pyinstaller pyinstaller-linux.spec # If you run on Linux
+uv run pyinstaller pyinstaller-macos.spec # If you run on MacOS
 ```
 
 The binary will be saved in a `dist/` directory.

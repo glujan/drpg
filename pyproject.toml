@@ -30,7 +30,6 @@ dev = [
     "coverage[toml]",
     "flake8",
     "respx",
-    "pip-tools",
     "pyinstaller",
     "tox",
     "tox-gh-actions",

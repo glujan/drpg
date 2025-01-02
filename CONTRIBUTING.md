@@ -22,10 +22,7 @@ As a first step, you need to create a new virtualenv and install development
 dependencies:
 
 ```bash
-python3.9 -m venv venv
-source venv/bin/activate
-pip install -r requirements.dev.txt
-
+uv sync
 ```
 
 ### Running tests
@@ -34,8 +31,7 @@ Tests are implemented in `unittest` standard library. To run them simply
 execute:
 
 ```bash
-source venv/bin/activate
-python -m unittest discover
+uv run -m unittest discover
 ```
 
 ### Building a wheel
@@ -43,8 +39,7 @@ python -m unittest discover
 The project is using `build` with `hatchling` as a backend. To generate a source or wheel package run:
 
 ```bash
-source venv/bin/activate
-python -m build --sdist --wheel --outdir dist/
+uv build
 ```
 
 The wheel and source distribution will be saved in a `dist/` directory.

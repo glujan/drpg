@@ -214,23 +214,34 @@ class DrpgSync:
         return False
 
     def _file_path(self, product: Product, item: DownloadItem) -> Path:
-        publishers_name = _normalize_path_part(
-            product.get("publisher", {}).get("name", "Others"), self._config.compatibility_mode
-        )
-        product_name = _normalize_path_part(product["name"], self._config.compatibility_mode)
-        item_name = _normalize_path_part(item["filename"], self._config.compatibility_mode)
+        """
+        Strip out unwanted characters in parts of the path to the downloaded file representing
+        publisher's name, product name, and item name.
+        """
+
+        if self._config.compatibility_mode:
+            normalize = PathNormalizer.normalize_drivethrurpg_compatible
+        else:
+            normalize = PathNormalizer.normalize
+
+        publishers_name = normalize(product.get("publisher", {}).get("name", "Others"))
+        product_name = normalize(product["name"])
+        item_name = normalize(item["filename"])
         if self._config.omit_publisher:
             return self._config.library_path / product_name / item_name
         else:
             return self._config.library_path / publishers_name / product_name / item_name
 
 
-def _normalize_path_part(part: str, compatibility_mode: bool) -> str:
-    """
-    Strip out unwanted characters in parts of the path to the downloaded file representing
-    publisher's name, product name, and item name.
-    """
+def _newest_checksum(item: DownloadItem) -> str | None:
+    return max(
+        item["checksums"] or [],
+        default={"checksum": None},
+        key=lambda s: datetime.fromisoformat(s["checksumDate"]),
+    )["checksum"]
 
+
+class PathNormalizer:
     # There are two algorithms for normalizing names. One is the drpg way, and the other
     # is the DriveThruRPG way.
     #
@@ -249,22 +260,6 @@ def _normalize_path_part(part: str, compatibility_mode: bool) -> str:
     # https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file#naming-conventions
     # Since Windows is the lowest common denominator, we use its restrictions on all platforms.
 
-    if compatibility_mode:
-        part = PathNormalizer.normalize_drivethrurpg_compatible(part)
-    else:
-        part = PathNormalizer.normalize(part)
-    return part
-
-
-def _newest_checksum(item: DownloadItem) -> str | None:
-    return max(
-        item["checksums"] or [],
-        default={"checksum": None},
-        key=lambda s: datetime.fromisoformat(s["checksumDate"]),
-    )["checksum"]
-
-
-class PathNormalizer:
     separator_drpg = " - "
     multiple_drpg_separators = f"({separator_drpg})+"
     multiple_whitespaces = re.compile(r"\s+")

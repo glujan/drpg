@@ -282,6 +282,17 @@ class DrpgSyncProcessItemTest(TestCase):
 
     @mock.patch("drpg.sync.logger")
     @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock())
+    @respx.mock(base_url=DrpgApi.API_URL, using="httpx")
+    def test_url_preparing(self, _file_path, logger, respx_mock):
+        respx_mock.get("order_products/123/prepare?siteId=10&index=0&getChecksums=1").respond(
+            200, json=DownloadUrlResponseFixture.preparing()
+        )
+        drpg.DrpgSync(dummy_config)._prepare_download_url(self.product, self.item)
+        self.assertEqual(logger.debug.call_count, 2)
+        self.assertIn("Waiting for download link", logger.debug.call_args.args[0])
+
+    @mock.patch("drpg.sync.logger")
+    @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock())
     def test_dry_run(self, file_path, logger):
         config = dummy_config()
         config.dry_run = True
@@ -303,10 +314,11 @@ class DrpgSyncTest(TestCase):
         products_count = 3
         products.side_effect = [
             (self.dummy_product(f"Rule Book {i}", files_count) for i in range(products_count)),
+            (self.dummy_product(f"Adventure {i}", files_count) for i in range(products_count)),
             iter(()),
         ]
         self.sync.sync()
-        self.assertEqual(need_download.call_count, files_count * products_count)
+        self.assertEqual(need_download.call_count, files_count * products_count * 2)
 
     def dummy_product(self, name, files_count):
         return types.Product(

@@ -18,14 +18,11 @@ Please provide tests for the code you are contributing.
 
 ### Prerequisites
 
-As a first step, you need to create a new virtualenv and install development
-dependencies:
+As a first step, you need to install `uv`, and install development dependencies:
 
 ```bash
-python3.9 -m venv venv
-source venv/bin/activate
-pip install -r requirements.dev.txt
-
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv sync
 ```
 
 ### Running tests
@@ -34,8 +31,7 @@ Tests are implemented in `unittest` standard library. To run them simply
 execute:
 
 ```bash
-source venv/bin/activate
-python -m unittest discover
+uv run -m unittest discover
 ```
 
 ### Building a wheel
@@ -43,8 +39,7 @@ python -m unittest discover
 The project is using `build` with `hatchling` as a backend. To generate a source or wheel package run:
 
 ```bash
-source venv/bin/activate
-python -m build --sdist --wheel --outdir dist/
+uv build
 ```
 
 The wheel and source distribution will be saved in a `dist/` directory.
@@ -55,16 +50,27 @@ The wheel and source distribution will be saved in a `dist/` directory.
 If you want to test the wheel you just created, install it in your project, like this:
 
 ```bash
-source venv/bin/activate
-pip install dist/drpg-2023.6.12.dev0-py3-none-any.whl --force-reinstall
+uv pip install dist/drpg-2023.6.12.dev0-py3-none-any.whl --force-reinstall
 ```
 Use the name of your own `.whl` file, of course.
 
 Then you can do a test run like this:
 
 ```bash
-python -m drpg --dry-run --token <whatever> --library-path <whatever>
+uv run python -m drpg --dry-run --token <whatever> --library-path <whatever>
 ```
+
+### Building a binary distribution
+
+Stand-alone executables are generated using PyInstaller. To generate a binary
+for your platform run:
+
+```bash
+uv run pyinstaller pyinstaller-linux.spec # If you run on Linux
+uv run pyinstaller pyinstaller-macos.spec # If you run on MacOS
+```
+
+The binary will be saved in a `dist/` directory.
 
 ## Configuring mitmproxy
 

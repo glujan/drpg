@@ -6,6 +6,8 @@ name: Automated tests
 on:
   push:
     branches: [ master ]
+    tags:
+      - dummy*
   pull_request:
     branches: [ master ]
 

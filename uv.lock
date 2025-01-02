@@ -159,10 +159,9 @@ build = [
 ci = [
     { name = "coverage", extra = ["toml"] },
     { name = "flake8" },
-    { name = "pyinstaller", marker = "python_full_version != '3.14.*'" },
     { name = "respx" },
     { name = "tox" },
-    { name = "tox-gh-actions" },
+    { name = "tox-gh" },
 ]
 dev = [
     { name = "coverage", extra = ["toml"] },
@@ -179,10 +178,9 @@ build = [{ name = "pyinstaller", marker = "python_full_version != '3.14.*'" }]
 ci = [
     { name = "coverage", extras = ["toml"] },
     { name = "flake8" },
-    { name = "pyinstaller", marker = "python_full_version != '3.14.*'" },
     { name = "respx" },
     { name = "tox" },
-    { name = "tox-gh-actions" },
+    { name = "tox-gh" },
 ]
 dev = [
     { name = "coverage", extras = ["toml"] },
@@ -520,15 +518,15 @@ wheels = [
 ]
 
 [[package]]
-name = "tox-gh-actions"
-version = "3.2.0"
+name = "tox-gh"
+version = "1.4.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "tox" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5b/a1/3e7b3185031f905ddfc0c65dfd85949dae612a4387cbacb286b9f2931314/tox-gh-actions-3.2.0.tar.gz", hash = "sha256:ac6fa3b8da51bc90dd77985fd55f09e746c6558c55910c0a93d643045a2b0ccc", size = 18834 }
+sdist = { url = "https://files.pythonhosted.org/packages/6d/9e/d621445f447751b5211b0d533ab2585dcf2d1310518c43d5d702d31a008c/tox_gh-1.4.4.tar.gz", hash = "sha256:4ea585f66585b90f5826b1677cfc9453747792a0f9ff83d468603bc17556e07b", size = 7615 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b9/7a/d59f4eb08d156787af19fb44371586fd8b25580a1837ce92ae203a847c49/tox_gh_actions-3.2.0-py2.py3-none-any.whl", hash = "sha256:821b66a4751a788fa3e9617bd796d696507b08c6e1d929ee4faefba06b73b694", size = 9951 },
+    { url = "https://files.pythonhosted.org/packages/ac/3e/3c5c71f37a9f542789e9cae49bf840f8ae1be6b28d3dd7882fbb9a39833e/tox_gh-1.4.4-py3-none-any.whl", hash = "sha256:b962e0f8c4619e98d11c2a135939876691e148b843b7dac4cff7de1dc4f7c215", size = 6771 },
 ]
 
 [[package]]

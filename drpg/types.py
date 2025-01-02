@@ -7,9 +7,11 @@ class TokenResponse(TypedDict):
     refreshTokenTTL: int
 
 
-class PrepareDownloadUrlResponse(TypedDict):
+class DownloadUrlResponse(TypedDict):
     url: str
     status: str
+    filename: str
+    lastChecksum: str
 
 
 class Product(TypedDict):

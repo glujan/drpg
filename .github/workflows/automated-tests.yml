@@ -33,19 +33,22 @@ jobs:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'
     - uses: pre-commit/action@v3.0.1
+    - uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
     - name: Install dependencies
       run: |
-        pip install -r requirements.dev.txt
+        uv sync --group ci
     - name: Test pinned deps with unittest
       run: |
-        coverage erase
-        coverage run -m unittest discover
+        uv run coverage erase
+        uv run coverage run -m unittest discover
     - name: Check coverage
       run: |
-        coverage report --show-missing --fail-under=95
+        uv run coverage report --show-missing --fail-under=95
     - name: Test with dependency matrix
       run: |
-       tox
+        uv run tox
     - name: Test build sdist and wheel packages
       run: |
-        python -m build --sdist --wheel --outdir dist/
+        uv build

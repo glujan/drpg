@@ -24,15 +24,19 @@ dependencies = [
     "httpx[http2]>=0.23",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
-    "build",
     "coverage[toml]",
     "flake8",
     "respx",
-    "pip-tools",
     "tox",
+]
+build = [
+    "pyinstaller; python_version != '3.14'",
+]
+ci = [
     "tox-gh-actions",
+    {include-group = "dev"},
 ]
 
 [project.scripts]

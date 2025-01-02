@@ -11,7 +11,6 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -23,33 +22,35 @@ jobs:
           '3.12',
           '3.13',
           '3.14.0-alpha.3',
+          'pypy3.9',
           'pypy3.10',
         ]
-
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
-        cache: 'pip'
-    - uses: pre-commit/action@v3.0.1
-    - uses: astral-sh/setup-uv@v5
-      with:
-        enable-cache: true
-    - name: Install dependencies
-      run: |
-        uv sync --group ci
-    - name: Test pinned deps with unittest
-      run: |
-        uv run coverage erase
-        uv run coverage run -m unittest discover
-    - name: Check coverage
-      run: |
-        uv run coverage report --show-missing --fail-under=95
-    - name: Test with dependency matrix
-      run: |
-        uv run tox
-    - name: Test build sdist and wheel packages
-      run: |
-        uv build
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+      - uses: pre-commit/action@v3.0.1
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Install dependencies
+        run: |
+          uv sync --group ci
+      - name: Test pinned deps with unittest
+        run: |
+          uv run coverage erase
+          uv run coverage run -m unittest discover
+      - name: Check coverage
+        run: |
+          uv run coverage report --show-missing --fail-under=95
+      - name: Test with dependency matrix
+        run: |
+          uv run tox
+        env:
+          TOX_GH_MAJOR_MINOR: ${{ matrix.python-version }}
+      - name: Test build sdist and wheel packages
+        run: |
+          uv build

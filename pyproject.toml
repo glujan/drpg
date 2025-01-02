@@ -36,7 +36,7 @@ build = [
     "pyinstaller; python_version != '3.14'",
 ]
 ci = [
-    "tox-gh-actions",
+    "tox-gh",
     {include-group = "dev"},
 ]
 
@@ -65,3 +65,8 @@ path = "drpg/__init__.py"
 [tool.hatch.build.targets.sdist]
 include = ["/drpg"]
 exclude = [".gitignore"]
+
+[tool.isort]
+line_length = 100
+known_first_party = "drpg"
+profile = "black"

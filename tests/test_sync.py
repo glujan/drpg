@@ -156,6 +156,21 @@ class DrpgSyncFilePathTest(TestCase):
         except ValueError as e:  # pragma: no cover
             self.fail(e)
 
+    def test_product_starts_with_slash_compatibility_mode(self):
+        product = {
+            "name": "Rulebook - 2. ed",
+            "publisher": {"name": "/Slash Publishing"},
+        }
+        item = {"filename": "filename.pdf"}
+
+        config = dummy_config()
+        config.compatibility_mode = True
+        path = drpg.DrpgSync(config)._file_path(product, item)
+        try:
+            path.relative_to(dummy_config.library_path)
+        except ValueError as e:  # pragma: no cover
+            self.fail(e)
+
     def test_omit_publisher(self):
         publisher = "Unit Publishing"
         product = {
@@ -258,6 +273,15 @@ class DrpgSyncProcessItemTest(TestCase):
 
     @mock.patch("drpg.sync.logger")
     @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock())
+    @respx.mock(using="httpx")
+    def test_invalid_status_code(self, _file_path, logger, respx_mock):
+        respx_mock.get(self.download_url["url"]).respond(400, content=b"Bad request")
+        drpg.DrpgSync(dummy_config)._download_from_url(self.download_url, PathMock())
+        logger.error.assert_called_once()
+        self.assertIn("Invalid download for", logger.error.call_args.args[0])
+
+    @mock.patch("drpg.sync.logger")
+    @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock())
     def test_dry_run(self, file_path, logger):
         config = dummy_config()
         config.dry_run = True
@@ -270,19 +294,19 @@ class DrpgSyncTest(TestCase):
     def setUp(self):
         self.sync = drpg.DrpgSync(dummy_config)
 
+    @respx.mock(base_url=DrpgApi.API_URL, using="httpx")
     @mock.patch("drpg.api.DrpgApi.token", return_value={"access_token": "t"})
-    @mock.patch("drpg.DrpgSync._need_download", return_value=True)
+    @mock.patch("drpg.DrpgSync._need_download", return_value=False)
     @mock.patch("drpg.api.DrpgApi.products")
-    @mock.patch("drpg.DrpgSync._process")
-    def test_processes_each_item(self, process_item_mock, products, *_):
-        return
+    def test_processes_each_item(self, products, need_download, *_):
         files_count = 5
         products_count = 3
-        products.return_value = [
-            self.dummy_product(f"Rule Book {i}", files_count) for i in range(products_count)
+        products.side_effect = [
+            (self.dummy_product(f"Rule Book {i}", files_count) for i in range(products_count)),
+            iter(()),
         ]
         self.sync.sync()
-        self.assertEqual(process_item_mock.call_count, files_count * products_count)
+        self.assertEqual(need_download.call_count, files_count * products_count)
 
     def dummy_product(self, name, files_count):
         return types.Product(
@@ -292,7 +316,7 @@ class DrpgSyncTest(TestCase):
             orderProductId=987,
             fileLastModified=datetime.now().isoformat(),
             files=[
-                types.DownloadItem(index=0, filename=f"file{i}.pdf", checksums=[])
+                types.DownloadItem(index=i, filename=f"file{i}.pdf", checksums=[])
                 for i in range(files_count)
             ],
         )

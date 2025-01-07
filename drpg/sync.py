@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+import dataclasses
+import enum
 import functools
 import html
 import logging
+import queue
 import re
 from datetime import datetime, timedelta
 from hashlib import md5
 from multiprocessing.pool import ThreadPool
 from time import timezone
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import httpx
 
@@ -16,12 +19,12 @@ from drpg.api import DrpgApi
 
 if TYPE_CHECKING:  # pragma: no cover
     from pathlib import Path
-    from typing import Any, Callable
+    from typing import Callable
 
     from drpg.config import Config
-    from drpg.types import DownloadItem, Product
+    from drpg.types import DownloadItem, DownloadUrlResponse, Product
 
-    NoneCallable = Callable[..., None]
+    NoneCallable = Callable[..., Any]
     Decorator = Callable[[NoneCallable], NoneCallable]
 
 logger = logging.getLogger("drpg")
@@ -56,64 +59,122 @@ class DrpgSync:
         logger.info("Authenticating")
         self._api.token()
         logger.info("Fetching products list")
-        process_item_args = (
-            (product, item)
-            for product in self._api.customer_products()
-            for item in product["files"]
-            if self._need_download(product, item)
+
+        q: queue.PriorityQueue = queue.PriorityQueue()
+
+        for product in self._api.products(1):
+            q.put(QueueItem(QueueItemType.EXTRACT_ITEMS, (product,)))
+
+        pool = ThreadPool(self._config.threads)
+        q.put(QueueItem(QueueItemType.GET_PAGE, (2,)))
+
+        pool.starmap_async(
+            self._process,
+            ((q,) for _ in range(self._config.threads)),
+            error_callback=print,  # TODO Add a real errback
         )
 
-        with ThreadPool(self._config.threads) as pool:
-            pool.starmap(self._process_item, process_item_args)
+        q.join()
+        pool.terminate()
+
         logger.info("Done!")
 
-    @suppress_errors(httpx.HTTPError, PermissionError)
-    def _process_item(self, product: Product, item: DownloadItem) -> None:
-        """Prepare for and download the item to the sync directory."""
+    def _process(self, q: queue.PriorityQueue) -> None:  # noqa: C901
+        while True:
+            try:
+                queue_item: QueueItem = q.get(block=True, timeout=0.5)
+            except queue.Empty:
+                continue
 
-        path = self._file_path(product, item)
+            if queue_item.action == QueueItemType.GET_PAGE:
+                self._get_page(q, *queue_item.args)
+            elif queue_item.action == QueueItemType.EXTRACT_ITEMS:
+                product, *_ = queue_item.args
+                for item in product["files"]:
+                    q.put(QueueItem(QueueItemType.PREPARE_DOWNLOAD_URL, (product, item)))
+            elif queue_item.action == QueueItemType.PREPARE_DOWNLOAD_URL:
+                product, item, *_ = queue_item.args
+                ready, url = self._prepare_download_url(product, item)
+                if not ready:
+                    q.put(QueueItem(QueueItemType.PREPARE_DOWNLOAD_URL, (product, item)))
+                elif url is not None:
+                    path = self._file_path(product, item)
+                    q.put(QueueItem(QueueItemType.DOWNLOAD, (url, path)))
+            elif queue_item.action == QueueItemType.DOWNLOAD:
+                url_data, path, *_ = queue_item.args
+                self._download_from_url(url_data, path)
+            q.task_done()
+
+    def _get_page(self, q, page):
+        products = self._api.products(page)
+        try:
+            product = next(products)
+        except StopIteration:
+            pass
+        else:
+            q.put(QueueItem(QueueItemType.EXTRACT_ITEMS, (product,)))
+            q.put(QueueItem(QueueItemType.GET_PAGE, (page + 1,)))
+
+        for product in products:
+            q.put(QueueItem(QueueItemType.EXTRACT_ITEMS, (product,)))
+
+    @suppress_errors(httpx.HTTPError)
+    def _prepare_download_url(
+        self, product: Product, item: DownloadItem
+    ) -> tuple[bool, DownloadUrlResponse | None]:
+        """Prepare for and download the item to the sync directory."""
+        if not self._need_download(product, item):
+            return True, None
 
         if self._config.dry_run:
+            path = self._file_path(product, item)
             logger.info("DRY RUN - would have downloaded file: %s", path)
-        else:
-            logger.info("Processing: %s - %s", product["name"], item["filename"])
+            return True, None
 
-            try:
-                url_data = self._api.prepare_download_url(product["orderProductId"], item["index"])
-            except self._api.PrepareDownloadUrlException:
-                logger.warning(
-                    "Could not download product: %s - %s",
-                    product["name"],
-                    item["filename"],
-                )
-                return
-
-            file_response = httpx.get(
-                url_data["url"],
-                timeout=30.0,
-                follow_redirects=True,
-                headers={
-                    "Accept-Encoding": "gzip, deflate, br",
-                    "User-Agent": "Mozilla/5.0",
-                    "Accept": "*/*",
-                },
+        logger.info("Processing: %s - %s", product["name"], item["filename"])
+        try:
+            url_data = self._api.prepare_download_url(product["orderProductId"], item["index"])
+        except self._api.PrepareDownloadUrlException:
+            logger.warning(
+                "Could not download product: %s - %s",
+                product["name"],
+                item["filename"],
             )
+            return True, None  # TODO Maybe retry downloading the item?
 
-            if (
-                self._config.validate
-                and (api_checksum := _newest_checksum(item))
-                and (local_checksum := md5(file_response.content).hexdigest()) != api_checksum
-            ):
-                logger.error(
-                    "ERROR: Invalid checksum for %s - %s, skipping saving file (%s != %s))",
-                    product["name"],
-                    item["filename"],
-                    api_checksum,
-                    local_checksum,
-                )
-            else:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_bytes(file_response.content)
+        if url_data["status"].startswith("Preparing"):
+            logger.debug(
+                "Waiting for download link for: %s - %s", product["name"], item["filename"]
+            )
+            return False, None
+        return True, url_data
+
+    @suppress_errors(httpx.HTTPError, PermissionError)
+    def _download_from_url(self, url_data: DownloadUrlResponse, path: Path):
+        # TODO Add Read timeout to the call below:
+        # https://www.python-httpx.org/advanced/timeouts/#fine-tuning-the-configuration
+        file_response = httpx.get(
+            url_data["url"],
+            timeout=30.0,
+            follow_redirects=True,
+            headers={
+                "Accept-Encoding": "gzip, deflate",
+                "User-Agent": "Mozilla/5.0",
+                "Accept": "*/*",
+            },
+        )
+        if not file_response.is_success:
+            logger.error("ERROR: Invalid download for %s", url_data["filename"])
+        elif self._config.validate and (
+            url_data["lastChecksum"] != md5(file_response.content).hexdigest()
+        ):
+            logger.error(
+                "ERROR: Invalid checksum for %s, skipping saving file", url_data["filename"]
+            )
+        else:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(file_response.content)
+            logger.info("Writing to %s", path)
 
     def _need_download(self, product: Product, item: DownloadItem) -> bool:
         """Specify whether or not the item needs to be downloaded."""
@@ -156,23 +217,34 @@ class DrpgSync:
         return False
 
     def _file_path(self, product: Product, item: DownloadItem) -> Path:
-        publishers_name = _normalize_path_part(
-            product.get("publisher", {}).get("name", "Others"), self._config.compatibility_mode
-        )
-        product_name = _normalize_path_part(product["name"], self._config.compatibility_mode)
-        item_name = _normalize_path_part(item["filename"], self._config.compatibility_mode)
+        """
+        Strip out unwanted characters in parts of the path to the downloaded file representing
+        publisher's name, product name, and item name.
+        """
+
+        if self._config.compatibility_mode:
+            normalize = PathNormalizer.normalize_drivethrurpg_compatible
+        else:
+            normalize = PathNormalizer.normalize
+
+        publishers_name = normalize(product.get("publisher", {}).get("name", "Others"))
+        product_name = normalize(product["name"])
+        item_name = normalize(item["filename"])
         if self._config.omit_publisher:
             return self._config.library_path / product_name / item_name
         else:
             return self._config.library_path / publishers_name / product_name / item_name
 
 
-def _normalize_path_part(part: str, compatibility_mode: bool) -> str:
-    """
-    Strip out unwanted characters in parts of the path to the downloaded file representing
-    publisher's name, product name, and item name.
-    """
+def _newest_checksum(item: DownloadItem) -> str | None:
+    return max(
+        item["checksums"] or [],
+        default={"checksum": None},
+        key=lambda s: datetime.fromisoformat(s["checksumDate"]),
+    )["checksum"]
 
+
+class PathNormalizer:
     # There are two algorithms for normalizing names. One is the drpg way, and the other
     # is the DriveThruRPG way.
     #
@@ -191,22 +263,6 @@ def _normalize_path_part(part: str, compatibility_mode: bool) -> str:
     # https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file#naming-conventions
     # Since Windows is the lowest common denominator, we use its restrictions on all platforms.
 
-    if compatibility_mode:
-        part = PathNormalizer.normalize_drivethrurpg_compatible(part)
-    else:
-        part = PathNormalizer.normalize(part)
-    return part
-
-
-def _newest_checksum(item: DownloadItem) -> str | None:
-    return max(
-        item["checksums"] or [],
-        default={"checksum": None},
-        key=lambda s: datetime.fromisoformat(s["checksumDate"]),
-    )["checksum"]
-
-
-class PathNormalizer:
     separator_drpg = " - "
     multiple_drpg_separators = f"({separator_drpg})+"
     multiple_whitespaces = re.compile(r"\s+")
@@ -227,3 +283,17 @@ class PathNormalizer:
         part = re.sub(PathNormalizer.multiple_drpg_separators, separator, part)
         part = re.sub(PathNormalizer.multiple_whitespaces, " ", part)
         return part
+
+
+class QueueItemType(enum.IntEnum):
+    GET_PAGE = 1
+    EXTRACT_ITEMS = 2
+    PREPARE_DOWNLOAD_URL = 3
+    CHECK_DOWNLOAD_URL = 3
+    DOWNLOAD = 4
+
+
+@dataclasses.dataclass(order=True)
+class QueueItem:
+    action: QueueItemType
+    args: tuple[Any, ...] = dataclasses.field(compare=False, default_factory=tuple)

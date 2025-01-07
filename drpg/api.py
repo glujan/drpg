@@ -21,7 +21,10 @@ class DrpgApi:
 
     API_URL = "https://api.drivethrurpg.com/api/vBeta/"
 
-    class PrepareDownloadUrlException(Exception):
+    class ApiException(Exception):
+        pass
+
+    class PrepareDownloadUrlException(ApiException):
         UNEXPECTED_RESPONSE = "Got response with unexpected schema"
         REQUEST_FAILED = "Got non 2xx response"
 
@@ -51,6 +54,8 @@ class DrpgApi:
 
         if resp.status_code == httpx.codes.UNAUTHORIZED:
             raise AttributeError("Provided token is invalid")
+        if not resp.is_success:
+            raise self.ApiException(resp.content)
 
         login_data: TokenResponse = resp.json()
         self._client.headers["Authorization"] = login_data["token"]
@@ -59,7 +64,7 @@ class DrpgApi:
     def products(self, page: int = 1, per_page: int = 50) -> Iterator[Product]:
         """List products from a specified page."""
         logger.debug("Yielding products page %d", page)
-        result = self._client.get(
+        resp = self._client.get(
             "order_products",
             params={
                 "getChecksum": 1,
@@ -69,9 +74,11 @@ class DrpgApi:
                 "library": 1,
                 "archived": 0,
             },
-        ).json()
+        )
+        if not resp.is_success:
+            raise self.ApiException(resp.content)
 
-        yield from result
+        yield from resp.json()
 
     def prepare_download_url(self, product_id: int, item_id: int) -> DownloadUrlResponse:
         """
@@ -101,7 +108,9 @@ class DrpgApi:
         logger.debug("Checked download link for: %s - %s", product_id, item_id)
         return self._parse_message(resp, product_id, item_id)
 
-    def _parse_message(self, resp, product_id: int, item_id: int) -> DownloadUrlResponse:
+    def _parse_message(
+        self, resp: httpx.Response, product_id: int, item_id: int
+    ) -> DownloadUrlResponse:
         message: DownloadUrlResponse = resp.json()
         if resp.is_success:
             expected_keys = DownloadUrlResponse.__required_keys__

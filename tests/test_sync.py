@@ -240,13 +240,11 @@ class DrpgSyncProcessItemTest(TestCase):
             def __init__(self):
                 "Helper error to easier make an instance of HTTPError"
 
-        for error_class in [TestHTTPError, PermissionError]:
-            with self.subTest(error_class=error_class):
-                prepare_download_url.side_effect = error_class
-                try:
-                    self.sync._prepare_download_url(self.product, self.item)
-                except error_class as e:  # pragma:  no cover
-                    self.fail(e)
+        prepare_download_url.side_effect = TestHTTPError
+        try:
+            self.sync._prepare_download_url(self.product, self.item)
+        except TestHTTPError as e:  # pragma:  no cover
+            self.fail(e)
 
     @mock.patch("drpg.sync.logger")
     @mock.patch("drpg.api.DrpgApi.prepare_download_url")

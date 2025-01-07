@@ -79,7 +79,7 @@ class DrpgSync:
 
         logger.info("Done!")
 
-    def _process(self, q: queue.PriorityQueue) -> None:  # noqa: C901 XXX
+    def _process(self, q: queue.PriorityQueue) -> None:  # noqa: C901
         while True:
             try:
                 queue_item: QueueItem = q.get(block=True, timeout=0.5)
@@ -87,19 +87,7 @@ class DrpgSync:
                 continue
 
             if queue_item.action == QueueItemType.GET_PAGE:
-                page, *_ = queue_item.args
-                products = self._api.products(page)
-                try:
-                    product = next(products)
-                except StopIteration:
-                    pass
-                else:
-                    q.put(QueueItem(QueueItemType.EXTRACT_ITEMS, (product,)))
-                    q.put(QueueItem(QueueItemType.GET_PAGE, (page + 1,)))
-
-                for product in products:
-                    q.put(QueueItem(QueueItemType.EXTRACT_ITEMS, (product,)))
-
+                self._get_page(q, *queue_item.args)
             elif queue_item.action == QueueItemType.EXTRACT_ITEMS:
                 product, *_ = queue_item.args
                 for item in product["files"]:
@@ -107,7 +95,9 @@ class DrpgSync:
             elif queue_item.action == QueueItemType.PREPARE_DOWNLOAD_URL:
                 product, item, *_ = queue_item.args
                 ready, url = self._prepare_download_url(product, item)
-                if ready and url is not None:
+                if not ready:
+                    q.put(QueueItem(QueueItemType.PREPARE_DOWNLOAD_URL, (product, item)))
+                elif url is not None:
                     path = self._file_path(product, item)
                     q.put(QueueItem(QueueItemType.DOWNLOAD, (url, path)))
             elif queue_item.action == QueueItemType.DOWNLOAD:
@@ -115,7 +105,20 @@ class DrpgSync:
                 self._download_from_url(url_data, path)
             q.task_done()
 
-    @suppress_errors(httpx.HTTPError, PermissionError)
+    def _get_page(self, q, page):
+        products = self._api.products(page)
+        try:
+            product = next(products)
+        except StopIteration:
+            pass
+        else:
+            q.put(QueueItem(QueueItemType.EXTRACT_ITEMS, (product,)))
+            q.put(QueueItem(QueueItemType.GET_PAGE, (page + 1,)))
+
+        for product in products:
+            q.put(QueueItem(QueueItemType.EXTRACT_ITEMS, (product,)))
+
+    @suppress_errors(httpx.HTTPError)
     def _prepare_download_url(
         self, product: Product, item: DownloadItem
     ) -> tuple[bool, DownloadUrlResponse | None]:
@@ -155,7 +158,7 @@ class DrpgSync:
             timeout=30.0,
             follow_redirects=True,
             headers={
-                "Accept-Encoding": "gzip, deflate, br",
+                "Accept-Encoding": "gzip, deflate",
                 "User-Agent": "Mozilla/5.0",
                 "Accept": "*/*",
             },

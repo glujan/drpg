@@ -21,6 +21,7 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: CPython",
 ]
 dependencies = [
+    "httpx-retries>=0.4.0",
     "httpx[http2]>=0.23",
 ]
 

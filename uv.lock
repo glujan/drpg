@@ -173,7 +173,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "httpx", extras = ["http2"], specifier = ">=0.23" },
+    { name = "httpx", extras = ["http2"], specifier = ">=0.27" },
     { name = "httpx-retries", specifier = ">=0.4.0" },
 ]
 

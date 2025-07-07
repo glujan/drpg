@@ -6,8 +6,7 @@ from typing import TYPE_CHECKING
 
 import httpx
 
-from httpx_retries import Retry
-from httpx_retries import RetryTransport
+from httpx_retries import Retry, RetryTransport
 
 from drpg.types import PrepareDownloadUrlResponse
 

@@ -5,6 +5,7 @@ from time import sleep
 from typing import TYPE_CHECKING
 
 import httpx
+from httpx_retries import Retry, RetryTransport
 
 from drpg.types import PrepareDownloadUrlResponse
 
@@ -28,11 +29,16 @@ class DrpgApi:
 
     def __init__(self, api_key: str):
         logger.debug("Preparing httpx client")
+
+        retry = Retry(total=5, backoff_factor=0.5, status_forcelist=[400, 429, 502, 503, 504])
+        transport = RetryTransport(retry=retry)
+
         self._client = httpx.Client(
             base_url=self.API_URL,
             http1=False,
             http2=True,
             timeout=30.0,
+            transport=transport,
             headers={
                 "Content-Type": JSON_MIME,
                 "Accept": JSON_MIME,

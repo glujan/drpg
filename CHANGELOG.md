@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 2025.7.8
+* automatically retry failed API requests
+* support httpx 0.27-0.28+
+* publish distributions to GitHub release
+
 ## 2025.1.1
 * add `--validate` that checks if downloaded file has correct checksums
 * add `--threads` to allow user to specify a number of threads

@@ -10,19 +10,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3.10'
-    - uses: astral-sh/setup-uv@v6
+    - uses: astral-sh/setup-uv@v7
       with:
         enable-cache: true
     - name: Build
       run: |
         uv build
     - name: Upload dists
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: release-dists
         path: dist/
@@ -39,7 +39,7 @@ jobs:
       id-token: write
     steps:
     - name: Retrieve release distributions
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v7
       with:
         name: release-dists
         path: dist/
@@ -52,31 +52,31 @@ jobs:
     needs:
       - build
     steps:
-      - uses: actions/checkout@v4
-      - name: Retrieve release distributions
-        uses: actions/download-artifact@v4
-        with:
-          name: release-dists
-          path: dist/
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-      - uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
-      - name: Install build dependencies
-        run: |
-          uv sync --group build
-      - name: Build Linux binary
-        run: |
-          uv run pyinstaller pyinstaller-linux.spec
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
-          make_latest: true
-          draft: false
-          files: |
-            dist/drpg-${{github.ref_name}}-py3-none-any.whl
-            dist/drpg-${{github.ref_name}}.tar.gz
-            dist/drpg-linux-x86_64
+    - uses: actions/checkout@v6
+    - name: Retrieve release distributions
+      uses: actions/download-artifact@v7
+      with:
+        name: release-dists
+        path: dist/
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.10'
+    - uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+    - name: Install build dependencies
+      run: |
+        uv sync --group build
+    - name: Build Linux binary
+      run: |
+        uv run pyinstaller pyinstaller-linux.spec
+    - name: Create GitHub release
+      uses: softprops/action-gh-release@v2
+      with:
+        generate_release_notes: true
+        make_latest: true
+        draft: false
+        files: |
+          dist/drpg-${{github.ref_name}}-py3-none-any.whl
+          dist/drpg-${{github.ref_name}}.tar.gz
+          dist/drpg-linux-x86_64

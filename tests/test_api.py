@@ -76,7 +76,7 @@ class DrpgApiCustomerProductsTest(TestCase):
 class DrpgApiPrepareDownloadUrlTest(TestCase):
     def setUp(self):
         self.order_product_id = 123
-        params = urlencode({"siteId": DriveThruSite.DEFAULT.value, "index": 0, "getChecksums": 0})
+        params = urlencode({"siteId": str(DriveThruSite.DEFAULT), "index": 0, "getChecksums": 0})
         self.prepare_download_url = (
             f"/api/vBeta/order_products/{self.order_product_id}/prepare?{params}"
         )

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from enum import IntEnum
 from time import sleep
 from typing import TYPE_CHECKING
 
@@ -16,6 +17,10 @@ if TYPE_CHECKING:  # pragma: no cover
 
 logger = logging.getLogger("drpg")
 JSON_MIME = "application/json"
+
+
+class DriveThruSite(IntEnum):
+    DEFAULT = 10
 
 
 class DrpgApi:
@@ -77,7 +82,7 @@ class DrpgApi:
         """Generate a download link and metadata for a product's item."""
 
         task_params = {
-            "siteId": 10,  # Magic number, probably something like storefront ID
+            "siteId": DriveThruSite.DEFAULT,
             "index": item_id,
             "getChecksums": 0,  # Official clients defaults to 1
         }

@@ -8,31 +8,36 @@ import platform
 import re
 import signal
 import sys
+import threading
 from os import environ
 from pathlib import Path
 from traceback import format_exception
 from typing import TYPE_CHECKING
 
-import httpx
-
 import drpg
 from drpg.config import Config
 
 if TYPE_CHECKING:  # pragma: no cover
-    from types import FrameType, TracebackType
+    from types import TracebackType
 
     CliArgs = list[str]
 
 __all__ = ["run"]
 
+_shutdown_event: threading.Event | None = None
+
 
 def run() -> None:
+    global _shutdown_event
+    _shutdown_event = threading.Event()
     signal.signal(signal.SIGINT, _handle_signal)
     sys.excepthook = _excepthook
     config = _parse_cli()
     _setup_logger(config.log_level)
 
-    drpg.DrpgSync(config).sync()
+    with drpg.DrpgSync(config) as sync:
+        sync._shutdown_event = _shutdown_event
+        sync.sync()
 
 
 def _parse_cli(args: CliArgs | None = None) -> Config:
@@ -111,7 +116,7 @@ def _parse_cli(args: CliArgs | None = None) -> Config:
         help="Omit the publisher name in the target path.",
     )
 
-    return parser.parse_args(args, namespace=Config())
+    return Config.from_namespace(parser.parse_args(args))
 
 
 def _default_dir() -> Path:
@@ -170,7 +175,9 @@ def _set_httpx_log_level(level: int):
         logger.setLevel(httpx_deps_log_level)
 
 
-def _handle_signal(sig: int, frame: FrameType | None) -> None:
+def _handle_signal(sig: int, frame: object) -> None:
+    if _shutdown_event:
+        _shutdown_event.set()
     logging.getLogger("drpg").info("Stopping...")
     sys.exit(0)
 
@@ -186,16 +193,12 @@ def _excepthook(
 _APPLICATION_KEY_RE = re.compile(r"(applicationKey=)(.{10,40})")
 
 
-def application_key_filter(record: logging.LogRecord):
+def application_key_filter(record: logging.LogRecord) -> bool:
     try:
-        method, url, *other = record.args  # type: ignore
-        if (
-            record.name == "httpx"
-            and isinstance(url, httpx.URL)
-            and url.params.get("applicationKey")
-        ):
-            url = re.sub(_APPLICATION_KEY_RE, r"\1******", str(url))
-            record.args = (method, url) + tuple(other)
+        if record.name == "httpx" and "applicationKey" in str(record.args):
+            masked = re.sub(_APPLICATION_KEY_RE, r"\1******", str(record.args))
+            record.msg = f"httpx request: {masked}"
+            record.args = ()
     except Exception:
         pass
     return True

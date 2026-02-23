@@ -7,6 +7,7 @@ import respx
 from httpx import Response
 
 from drpg import api
+from drpg.api import DriveThruSite
 
 from .fixtures import PrepareDownloadUrlResponseFixture
 
@@ -75,7 +76,7 @@ class DrpgApiCustomerProductsTest(TestCase):
 class DrpgApiPrepareDownloadUrlTest(TestCase):
     def setUp(self):
         self.order_product_id = 123
-        params = urlencode({"siteId": 10, "index": 0, "getChecksums": 0})
+        params = urlencode({"siteId": str(DriveThruSite.DEFAULT), "index": 0, "getChecksums": 0})
         self.prepare_download_url = (
             f"/api/vBeta/order_products/{self.order_product_id}/prepare?{params}"
         )

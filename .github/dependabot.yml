@@ -6,7 +6,7 @@ updates:
       interval: "monthly"
     allow:
       - dependency-type: "all"
-    versioning-strategy: increase-if-necessary
+    versioning-strategy: lockfile-only
     groups:
       all:
         patterns:
@@ -19,3 +19,11 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    groups:
+      all-actions:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
+          - "minor"
+          - "patch"

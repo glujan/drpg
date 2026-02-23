@@ -11,12 +11,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v6
-    - name: Set up Python
-      uses: actions/setup-python@v6
-      with:
-        python-version: '3.10'
     - uses: astral-sh/setup-uv@v7
       with:
+        python-version: '3.10'
         enable-cache: true
     - name: Build
       run: |
@@ -58,11 +55,9 @@ jobs:
       with:
         name: release-dists
         path: dist/
-    - uses: actions/setup-python@v6
-      with:
-        python-version: '3.10'
     - uses: astral-sh/setup-uv@v7
       with:
+        python-version: '3.10'
         enable-cache: true
     - name: Install build dependencies
       run: |

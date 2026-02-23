@@ -4,6 +4,7 @@ import functools
 import html
 import logging
 import re
+import threading
 from datetime import datetime, timedelta
 from hashlib import md5
 from multiprocessing.pool import ThreadPool
@@ -49,6 +50,14 @@ class DrpgSync:
     def __init__(self, config: Config) -> None:
         self._config = config
         self._api = DrpgApi(config.token)
+        self._shutdown_event = threading.Event()
+        self._download_client = httpx.Client(timeout=30.0)
+
+    def __enter__(self) -> DrpgSync:
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        self._download_client.close()
 
     def sync(self) -> None:
         """Download all new, updated and not yet synced items to a sync directory."""
@@ -71,6 +80,9 @@ class DrpgSync:
     def _process_item(self, product: Product, item: DownloadItem) -> None:
         """Prepare for and download the item to the sync directory."""
 
+        if self._shutdown_event.is_set():
+            return
+
         path = self._file_path(product, item)
 
         if self._config.dry_run:
@@ -88,9 +100,8 @@ class DrpgSync:
                 )
                 return
 
-            file_response = httpx.get(
+            file_response = self._download_client.get(
                 url_data["url"],
-                timeout=30.0,
                 follow_redirects=True,
                 headers={
                     "Accept-Encoding": "gzip, deflate, br",

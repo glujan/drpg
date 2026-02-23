@@ -1,7 +1,5 @@
 name: Automated tests
-permissions:
-  contents: read
-
+permissions: {}
 on:
   push:
     branches: [ master ]

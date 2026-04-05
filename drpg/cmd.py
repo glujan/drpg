@@ -52,7 +52,9 @@ class ConfigFileAction(argparse.Action):
         cp = configparser.ConfigParser(allow_unnamed_section=True)
         with config_file.open() as cf:
             cp.read_file(cf)
-            section = cp[configparser.UNNAMED_SECTION]
+            if "drpg" not in cp.sections():
+                raise argparse.ArgumentError(self, f"No drpg section in '{config_file}'")
+            section = cp["drpg"]
             for key in dataclasses.fields(Config):
                 if key.type == "bool":
                     value = section.getboolean(key.name)

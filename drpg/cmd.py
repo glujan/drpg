@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import configparser
+import dataclasses
 import logging
 import os.path
 import platform
@@ -12,7 +13,7 @@ import threading
 from os import environ
 from pathlib import Path
 from traceback import format_exception
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import drpg
 from drpg.config import Config
@@ -41,6 +42,32 @@ def run() -> None:
         sync.sync()
 
 
+class ConfigFileAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        if values is None:
+            raise argparse.ArgumentError(self, "No config file specified")
+        config_file = cast(Path, values)
+        if not config_file.exists():
+            raise argparse.ArgumentError(self, f"No such config file '{config_file}'")
+        cp = configparser.ConfigParser(allow_unnamed_section=True)
+        with config_file.open() as cf:
+            cp.read_file(cf)
+            section = cp[configparser.UNNAMED_SECTION]
+            for key in dataclasses.fields(Config):
+                if key.type == "bool":
+                    value = section.getboolean(key.name)
+                elif key.type == "int":
+                    value = section.getint(key.name)
+                elif key.type == "Path":
+                    value = section.get(key.name)
+                    if value is not None:
+                        value = Path(value)
+                else:
+                    value = section.get(key.name)
+                if value is not None:
+                    setattr(namespace, key.name, value)
+
+
 def _parse_cli(args: CliArgs | None = None) -> Config:
     parser = argparse.ArgumentParser(
         prog="drpg",
@@ -55,9 +82,14 @@ def _parse_cli(args: CliArgs | None = None) -> Config:
         """,
     )
     parser.add_argument(
+        "--config",
+        help="Read settings from config file for DRPG",
+        type=Path,
+        action=ConfigFileAction,
+    )
+    parser.add_argument(
         "--token",
         "-t",
-        required="DRPG_TOKEN" not in environ,
         help="Required. Your DriveThruRPG API token",
         default=environ.get("DRPG_TOKEN"),
     )
@@ -109,22 +141,28 @@ def _parse_cli(args: CliArgs | None = None) -> Config:
         help="Disable checking for updated version",
     )
 
-    compability_group = parser.add_mutually_exclusive_group()
-
-    compability_group.add_argument(
+    parser.add_argument(
         "--compatibility-mode",
         action="store_true",
         default=environ.get("DRPG_COMPATIBILITY_MODE", "false").lower() == "true",
         help="Name files and directories the way that DriveThruRPG's client app does.",
     )
-    compability_group.add_argument(
+    parser.add_argument(
         "--omit-publisher",
         action="store_true",
         default=environ.get("DRPG_OMIT_PUBLISHER", "false").lower() == "true",
         help="Omit the publisher name in the target path.",
     )
 
-    return Config.from_namespace(parser.parse_args(args))
+    namespace = parser.parse_args(args)
+
+    # Done here so we can let the config parser set these, and still catch the issues
+    if namespace.token is None:
+        parser.error("--token/-t argument is required")
+    if namespace.compatibility_mode is True and namespace.omit_publisher is True:
+        parser.error("Can only set compatibility-mode *or* omit-publisher, not both")
+
+    return Config.from_namespace(namespace)
 
 
 def _default_dir() -> Path:

@@ -59,7 +59,7 @@ class ConfigFileAction(argparse.Action):
                     value = section.getboolean(key.name)
                 elif key.type == "int":
                     value = section.getint(key.name)
-                elif key.type == "Path":
+                elif key.type in ["Path", "Path | None"]:
                     value = section.get(key.name)
                     if value is not None:
                         value = Path(value)
@@ -146,6 +146,12 @@ def _parse_cli(args: CliArgs | None = None) -> Config:
         action="store_true",
         default=environ.get("DRPG_OMIT_PUBLISHER", "false").lower() == "true",
         help="Omit the publisher name in the target path.",
+    )
+    parser.add_argument(
+        "--rewrite-folder-names",
+        type=Path,
+        default=environ.get("DRPG_REWRITE_FOLDER_NAMES"),
+        help="Add rewrite table for folder names",
     )
 
     namespace = parser.parse_args(args)

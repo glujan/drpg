@@ -60,7 +60,9 @@ class DrpgSync:
             with config.rewrite_folder_names.open() as cf:
                 cp.read_file(cf)
                 if "rewrite" not in cp.sections():
-                    raise Exception(f"No 'rewrite' section in '{config.rewrite_folder_names}")
+                    raise configparser.Error(
+                        f"No 'rewrite' section in '{config.rewrite_folder_names}"
+                    )
                 self.rewrites = dict(cp.items("rewrite"))
 
     def __enter__(self) -> DrpgSync:

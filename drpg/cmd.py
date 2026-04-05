@@ -49,7 +49,7 @@ class ConfigFileAction(argparse.Action):
         config_file = cast(Path, values)
         if not config_file.exists():
             raise argparse.ArgumentError(self, f"No such config file '{config_file}'")
-        cp = configparser.ConfigParser(allow_unnamed_section=True)
+        cp = configparser.ConfigParser()
         with config_file.open() as cf:
             cp.read_file(cf)
             if "drpg" not in cp.sections():

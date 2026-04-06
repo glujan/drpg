@@ -1,3 +1,4 @@
+import json
 import string
 from datetime import datetime, timedelta
 from functools import partial
@@ -25,6 +26,7 @@ class dummy_config:
     threads = 5
     compatibility_mode = False
     omit_publisher = False
+    do_check = True
 
 
 PathMock = partial(mock.Mock, spec=Path)
@@ -265,6 +267,58 @@ class DrpgSyncProcessItemTest(TestCase):
         drpg.DrpgSync(config)._process_item(self.product, self.item)
         logger.info.assert_called_once()
         self.assertEqual(logger.info.call_args.args[1], file_path.return_value)
+
+
+class DrpgUpdateCheckTest(TestCase):
+    @mock.patch("drpg.sync.logger")
+    @respx.mock(base_url=DrpgApi.API_URL, using="httpx")
+    def test_version_check(self, logger, respx_mock):
+        respx_mock.get("https://api.github.com/repos/glujan/drpg/releases/latest").respond(
+            200, content=json.dumps({"tag_name": "2025.7.8"})
+        )
+        config = dummy_config()
+        drpg.DrpgSync(config).update_check()
+        logger.debug.assert_called_once_with(
+            "Local version %s is greater than or equal to remote version %s",
+            drpg.__version__,
+            "2025.7.8",
+        )
+
+    @mock.patch("drpg.sync.logger")
+    @respx.mock(base_url=DrpgApi.API_URL, using="httpx")
+    def test_version_check_newer(self, logger, respx_mock):
+        respx_mock.get("https://api.github.com/repos/glujan/drpg/releases/latest").respond(
+            200, content=json.dumps({"tag_name": "3000.1.1"})
+        )
+        config = dummy_config()
+        drpg.DrpgSync(config).update_check()
+        logger.warning.assert_called_once_with(
+            "Local version is %s, but %s has been released, so you may see issues when running the tool. Please goto https://github.com/glujan/drpg/releases for new releases",  # noqa: E501
+            drpg.__version__,
+            "3000.1.1",
+        )
+
+    @mock.patch("drpg.sync.logger")
+    @respx.mock(base_url=DrpgApi.API_URL, using="httpx")
+    def test_version_check_bad_status(self, logger, respx_mock):
+        respx_mock.get("https://api.github.com/repos/glujan/drpg/releases/latest").respond(
+            500, content="Failure"
+        )
+        config = dummy_config()
+        drpg.DrpgSync(config).update_check()
+        logger.warning.assert_called_once_with(
+            "Unable to check latest release, continuing: %s %s", 500, b"Failure"
+        )
+
+    @mock.patch("drpg.sync.logger")
+    @respx.mock(base_url=DrpgApi.API_URL, using="httpx")
+    def test_version_check_bad_response(self, logger, respx_mock):
+        respx_mock.get("https://api.github.com/repos/glujan/drpg/releases/latest").respond(
+            200, content="garbage"
+        )
+        config = dummy_config()
+        drpg.DrpgSync(config).update_check()
+        logger.exception.assert_called_once_with("Issue during version checking, continuing")
 
 
 class DrpgSyncTest(TestCase):

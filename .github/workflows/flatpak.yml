@@ -41,6 +41,7 @@ jobs:
         actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
       with:
         name: python-modules
+        path: flatpak
     - uses: >- # v6.7
         flatpak/flatpak-github-actions/flatpak-builder@401fe28a8384095fc1531b9d320b292f0ee45adb
       with:

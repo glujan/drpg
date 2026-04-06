@@ -1,0 +1,16 @@
+id: io.github.glujan.drpg
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+command: drpg
+modules:
+  - name: drpg
+    buildsystem: simple
+    modules:
+      - "python3-modules.yaml"
+    build-commands:
+      - PYTHONPATH=${FLATPAK_DEST} hatchling build
+      - pip3 install --prefix=${FLATPAK_DEST} ./dist/*.whl
+    sources:
+      - type: dir
+        path: ..

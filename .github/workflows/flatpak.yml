@@ -1,0 +1,36 @@
+name: Flatpak
+permissions: {}
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  # Run this separately as the run command fails in the container
+  flatpak-build-python-deps:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: >- # v6.0.2
+        actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+    - name: Build Python dependencies list
+      working-directory: flatpak
+      run: |
+        # FIXME: Waiting for https://github.com/flathub/org.flatpak.Builder/pull/393 to get merged
+        flatpak install --assumeyes https://dl.flathub.org/build-repo/272081/org.flatpak.Builder.flatpakref
+        flatpak run --command=flatpak-pip-generator org.flatpak.Builder --pyproject-file=../pyproject.toml --yaml
+
+  flatpak:
+    runs-on: ubuntu-latest
+    needs: [flatpak-build-python-deps]
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08@sha256:b1e607990996711edb12d563138f5946546b27174fc31d4f05a30f500e6f3d61
+      options: --privileged
+    steps:
+    - uses: >- # v6.0.2
+        actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+    - uses: >- # v6.7
+        flatpak/flatpak-github-actions/flatpak-builder@401fe28a8384095fc1531b9d320b292f0ee45adb
+      with:
+        manifest-path: flatpak/io.github.glujan.drpg.yaml
+        cache-key: flatpak-builder-${{ github.sha }}

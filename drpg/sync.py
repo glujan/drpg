@@ -53,9 +53,8 @@ class DrpgSync:
         self._api = DrpgApi(config.token)
         self._shutdown_event = threading.Event()
         self._download_client = httpx.Client(timeout=30.0)
-        if config.rewrite_folder_names is None:
-            self.rewrites = {}
-        else:
+        self.rewrites: dict[str, str] = {}
+        if config.rewrite_folder_names is not None:
             cp = configparser.ConfigParser()
             with config.rewrite_folder_names.open() as cf:
                 cp.read_file(cf)
@@ -63,7 +62,10 @@ class DrpgSync:
                     raise configparser.Error(
                         f"No 'rewrite' section in '{config.rewrite_folder_names}"
                     )
-                self.rewrites = dict(cp.items("rewrite"))
+                for key, value in cp.items("rewrite"):
+                    if key.startswith('"') and key.endswith('"'):
+                        key = key[1:-1]
+                    self.rewrites[key] = value
 
     def __enter__(self) -> DrpgSync:
         return self

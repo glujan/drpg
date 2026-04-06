@@ -16,6 +16,7 @@ jobs:
     - name: Build Python dependencies list
       working-directory: flatpak
       run: |
+        sudo apt install flatpak
         # FIXME: Waiting for https://github.com/flathub/org.flatpak.Builder/pull/393 to get merged
         flatpak install --assumeyes https://dl.flathub.org/build-repo/272081/org.flatpak.Builder.flatpakref
         flatpak run --command=flatpak-pip-generator org.flatpak.Builder --pyproject-file=../pyproject.toml --yaml

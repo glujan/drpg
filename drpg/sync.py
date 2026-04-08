@@ -102,7 +102,7 @@ class DrpgSync:
                         drpg.__version__,
                         version,
                     )
-            except:  # noqa: E722
+            except Exception:
                 logger.exception("Issue during version checking, continuing")
 
     def sync(self) -> None:

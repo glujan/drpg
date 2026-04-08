@@ -45,6 +45,21 @@ def suppress_errors(*errors: type[Exception]) -> Decorator:
     return decorator
 
 
+class DateVersion:
+    def __init__(self, raw_date_version: str):
+        parts = raw_date_version.split(".")
+        assert len(parts) == 3
+        self.value = [int(p) for p in parts]
+
+    def __lt__(self, other: DateVersion):
+        return self.value < other.value
+
+    def __eq__(self, other: object):
+        if not isinstance(other, DateVersion):
+            return False
+        return self.value == other.value
+
+
 class DrpgSync:
     """High level DriveThruRPG client that syncs products from a customer's library."""
 
@@ -75,7 +90,7 @@ class DrpgSync:
             try:
                 data = resp.json()
                 version = data["tag_name"]
-                if drpg.__version__ < version:
+                if DateVersion(drpg.__version__) < DateVersion(version):
                     logger.warning(
                         "Local version is %s, but %s has been released, so you may see issues when running the tool. Please goto https://github.com/glujan/drpg/releases for new releases",  # noqa: E501
                         drpg.__version__,

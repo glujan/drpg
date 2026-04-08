@@ -431,3 +431,18 @@ class NewestChecksumTest(TestCase):
 
 def _checksum_date_now() -> str:
     return datetime.now().isoformat()
+
+
+class DateVersionTest(TestCase):
+    def test_equal_date_version(self):
+        self.assertEqual(drpg.sync.DateVersion("2026.1.1"), drpg.sync.DateVersion("2026.1.1"))
+
+    def test_newer_date_version(self):
+        self.assertGreater(drpg.sync.DateVersion("2026.2.1"), drpg.sync.DateVersion("2026.1.1"))
+
+    def test_older_date_version(self):
+        self.assertGreater(drpg.sync.DateVersion("2026.1.1"), drpg.sync.DateVersion("2025.12.1"))
+
+    def test_compare_with_smaller_string_month(self):
+        # Compare two months that are different ways around with string and numeric comparisons
+        self.assertGreater(drpg.sync.DateVersion("2025.12.1"), drpg.sync.DateVersion("2025.2.1"))

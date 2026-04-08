@@ -273,7 +273,7 @@ class DrpgUpdateCheckTest(TestCase):
     @mock.patch("drpg.sync.logger")
     @respx.mock(base_url=DrpgApi.API_URL, using="httpx")
     def test_version_check(self, logger, respx_mock):
-        respx_mock.get("https://api.github.com/repos/glujan/drpg/releases/latest").respond(
+        respx_mock.get(drpg.DrpgSync.GITHUB_LATEST_URL).respond(
             200, content=json.dumps({"tag_name": "2025.7.8"})
         )
         config = dummy_config()
@@ -287,7 +287,7 @@ class DrpgUpdateCheckTest(TestCase):
     @mock.patch("drpg.sync.logger")
     @respx.mock(base_url=DrpgApi.API_URL, using="httpx")
     def test_version_check_newer(self, logger, respx_mock):
-        respx_mock.get("https://api.github.com/repos/glujan/drpg/releases/latest").respond(
+        respx_mock.get(drpg.DrpgSync.GITHUB_LATEST_URL).respond(
             200, content=json.dumps({"tag_name": "3000.1.1"})
         )
         config = dummy_config()
@@ -301,9 +301,7 @@ class DrpgUpdateCheckTest(TestCase):
     @mock.patch("drpg.sync.logger")
     @respx.mock(base_url=DrpgApi.API_URL, using="httpx")
     def test_version_check_bad_status(self, logger, respx_mock):
-        respx_mock.get("https://api.github.com/repos/glujan/drpg/releases/latest").respond(
-            500, content="Failure"
-        )
+        respx_mock.get(drpg.DrpgSync.GITHUB_LATEST_URL).respond(500, content="Failure")
         config = dummy_config()
         drpg.DrpgSync(config).update_check()
         logger.warning.assert_called_once_with(
@@ -313,9 +311,7 @@ class DrpgUpdateCheckTest(TestCase):
     @mock.patch("drpg.sync.logger")
     @respx.mock(base_url=DrpgApi.API_URL, using="httpx")
     def test_version_check_bad_response(self, logger, respx_mock):
-        respx_mock.get("https://api.github.com/repos/glujan/drpg/releases/latest").respond(
-            200, content="garbage"
-        )
+        respx_mock.get(drpg.DrpgSync.GITHUB_LATEST_URL).respond(200, content="garbage")
         config = dummy_config()
         drpg.DrpgSync(config).update_check()
         logger.exception.assert_called_once_with("Issue during version checking, continuing")

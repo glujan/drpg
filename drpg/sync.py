@@ -75,11 +75,11 @@ class DrpgSync:
     def __exit__(self, *args: object) -> None:
         self._download_client.close()
 
+    GITHUB_LATEST_URL = "https://api.github.com/repos/glujan/drpg/releases/latest"
+
     def update_check(self):
         if self._config.do_check:
-            resp = self._download_client.get(
-                "https://api.github.com/repos/glujan/drpg/releases/latest"
-            )
+            resp = self._download_client.get(self.GITHUB_LATEST_URL)
             if not resp.is_success:
                 logger.warning(
                     "Unable to check latest release, continuing: %s %s",

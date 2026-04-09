@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 import httpx
 
+import drpg
 from drpg.api import DrpgApi
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -44,6 +45,21 @@ def suppress_errors(*errors: type[Exception]) -> Decorator:
     return decorator
 
 
+class DateVersion:
+    def __init__(self, raw_date_version: str):
+        parts = raw_date_version.split(".")
+        assert len(parts) == 3
+        self.value = [int(p) for p in parts]
+
+    def __lt__(self, other: DateVersion):
+        return self.value < other.value
+
+    def __eq__(self, other: object):
+        if not isinstance(other, DateVersion):
+            return False
+        return self.value == other.value
+
+
 class DrpgSync:
     """High level DriveThruRPG client that syncs products from a customer's library."""
 
@@ -58,6 +74,36 @@ class DrpgSync:
 
     def __exit__(self, *args: object) -> None:
         self._download_client.close()
+
+    GITHUB_LATEST_URL = "https://api.github.com/repos/glujan/drpg/releases/latest"
+
+    def update_check(self):
+        if self._config.do_check:
+            resp = self._download_client.get(self.GITHUB_LATEST_URL)
+            if not resp.is_success:
+                logger.warning(
+                    "Unable to check latest release, continuing: %s %s",
+                    resp.status_code,
+                    resp.content,
+                )
+                return
+            try:
+                data = resp.json()
+                version = data["tag_name"]
+                if DateVersion(drpg.__version__) < DateVersion(version):
+                    logger.warning(
+                        "Local version is %s, but %s has been released, so you may see issues when running the tool. Please goto https://github.com/glujan/drpg/releases for new releases",  # noqa: E501
+                        drpg.__version__,
+                        version,
+                    )
+                else:
+                    logger.debug(
+                        "Local version %s is greater than or equal to remote version %s",
+                        drpg.__version__,
+                        version,
+                    )
+            except Exception:
+                logger.exception("Issue during version checking, continuing")
 
     def sync(self) -> None:
         """Download all new, updated and not yet synced items to a sync directory."""

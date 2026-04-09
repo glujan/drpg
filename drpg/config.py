@@ -16,6 +16,7 @@ class Config:
     compatibility_mode: bool = False
     omit_publisher: bool = False
     threads: int = 5
+    do_check: bool = True
 
     @classmethod
     def from_namespace(cls, namespace: Any) -> Config:
@@ -30,4 +31,5 @@ class Config:
             compatibility_mode=namespace.compatibility_mode,
             omit_publisher=namespace.omit_publisher,
             threads=namespace.threads,
+            do_check=namespace.do_check,
         )

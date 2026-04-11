@@ -17,6 +17,7 @@ jobs:
       working-directory: flatpak
       run: |
         sudo apt install flatpak
+        flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
         flatpak install --user --assumeyes org.flatpak.Builder
         flatpak run --command=flatpak-pip-generator org.flatpak.Builder --pyproject-file=../pyproject.toml --yaml
     - name: Upload python modules data

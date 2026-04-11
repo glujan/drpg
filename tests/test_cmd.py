@@ -30,6 +30,7 @@ class ParseCliTest(TestCase):
             "DRPG_THREADS": "1",
             "DRPG_COMPATIBILITY_MODE": "true",
             "DRPG_OMIT_PUBLISHER": "false",
+            "DRPG_NO_CHECK": "true",
         }
 
         with mock.patch.dict(cmd.environ, env):
@@ -44,6 +45,7 @@ class ParseCliTest(TestCase):
         self.assertEqual(config.threads, int(env["DRPG_THREADS"]))
         self.assertTrue(config.compatibility_mode)
         self.assertFalse(config.omit_publisher)
+        self.assertFalse(config.do_check)
 
     @mock.patch("drpg.cmd.argparse.ArgumentParser.error")
     def test_compability_mutually_exclusive_group(self, error_mock):
@@ -91,6 +93,8 @@ class SetHttpLogLevel(TestCase):
 
 
 class DefaultDirTest:
+    SYSTEM: str
+
     def setUp(self):
         self.platform_system = mock.patch(
             "drpg.cmd.platform.system", return_value=self.SYSTEM

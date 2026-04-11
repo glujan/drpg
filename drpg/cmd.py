@@ -37,6 +37,7 @@ def run() -> None:
 
     with drpg.DrpgSync(config) as sync:
         sync._shutdown_event = _shutdown_event
+        sync.update_check()
         sync.sync()
 
 
@@ -99,6 +100,13 @@ def _parse_cli(args: CliArgs | None = None) -> Config:
         action="store_true",
         default=environ.get("DRPG_DRY_RUN", "false").lower() == "true",
         help="Determine what should be downloaded, but do not download it. Defaults to false",
+    )
+    parser.add_argument(
+        "--no-check",
+        action="store_false",
+        dest="do_check",
+        default=environ.get("DRPG_NO_CHECK", "false").lower() == "false",
+        help="Disable checking for updated version",
     )
 
     compability_group = parser.add_mutually_exclusive_group()

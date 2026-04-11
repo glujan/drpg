@@ -23,12 +23,15 @@ jobs:
         ]
 
     steps:
-    - uses: actions/checkout@v6
-    - uses: astral-sh/setup-uv@v7
+    - uses: >- # v6.0.2
+        actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+    - uses: >- # v8.0.0
+        astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57
       with:
         python-version: ${{ matrix.python-version }}
         enable-cache: true
-    - uses: pre-commit/action@v3.0.1
+    - uses: >- # v3.0.1
+        pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd
     - name: Install dependencies
       run: |
         uv sync --group ci

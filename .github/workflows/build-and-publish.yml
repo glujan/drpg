@@ -11,8 +11,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v6
-    - uses: astral-sh/setup-uv@v7
+    - uses: >- # v6.0.2
+        actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+    - uses: >- # v8.0.0
+        astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57
       with:
         python-version: '3.12'
         enable-cache: true
@@ -20,7 +22,8 @@ jobs:
       run: |
         uv build
     - name: Upload dists
-      uses: actions/upload-artifact@v7
+      uses: >- # v7.0.0
+        actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
       with:
         name: release-dists
         path: dist/
@@ -37,7 +40,8 @@ jobs:
       id-token: write
     steps:
     - name: Retrieve release distributions
-      uses: actions/download-artifact@v8
+      uses: >- # v8.0.1
+        actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
       with:
         name: release-dists
         path: dist/
@@ -50,13 +54,16 @@ jobs:
     needs:
       - build
     steps:
-    - uses: actions/checkout@v6
+    - uses: >- # v6.0.2
+        actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
     - name: Retrieve release distributions
-      uses: actions/download-artifact@v8
+      uses: >- # v8.0.1
+        actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
       with:
         name: release-dists
         path: dist/
-    - uses: astral-sh/setup-uv@v7
+    - uses: >- # v8.0.0
+        astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57
       with:
         python-version: '3.12'
         enable-cache: true
@@ -67,7 +74,8 @@ jobs:
       run: |
         uv run pyinstaller pyinstaller-linux.spec
     - name: Create GitHub release
-      uses: softprops/action-gh-release@v2
+      uses: >- # v2.6.1
+        softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe
       with:
         generate_release_notes: true
         make_latest: true

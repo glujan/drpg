@@ -207,6 +207,6 @@ def application_key_filter(record: logging.LogRecord) -> bool:
             masked = re.sub(_APPLICATION_KEY_RE, r"\1******", str(record.args))
             record.msg = f"httpx request: {masked}"
             record.args = ()
-    except Exception:
-        pass
+    except Exception:  # pragma: no cover
+        pass  # I think this is nearly impossible to trigger
     return True

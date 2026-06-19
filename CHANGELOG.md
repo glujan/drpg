@@ -1,6 +1,12 @@
 # Changelog
 
 ## Unreleased
+* add resume/retry for large file downloads with HTTP Range requests
+* add configurable retry settings via environment variables:
+    * DRPG_DOWNLOAD_RETRIES (default 5)
+    * DRPG_DOWNLOAD_RETRY_DELAY (default 2.0)
+    * DRPG_DOWNLOAD_CHUNK_SIZE (default 8192)
+* improve handling of servers that don't support Range requests
 
 ## 2026.7.1
 * Check for latest drpg version in Github

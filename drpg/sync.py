@@ -34,6 +34,10 @@ logger = logging.getLogger("drpg")
 DOWNLOAD_TIMEOUT = httpx.Timeout(30.0, read=30.0)
 
 RETRYABLE_ERRORS = (httpx.RemoteProtocolError, httpx.NetworkError, httpx.ConnectError)
+# Transient HTTP statuses worth retrying (CDN hiccups + rate limiting). Permanent
+# statuses (404, 401, ...) must NOT retry. A 502 here is exactly what previously got
+# saved as a 173-byte "502 Bad Gateway" HTML file in place of the real download.
+TRANSIENT_HTTP_STATUS = frozenset({429, 500, 502, 503, 504})
 MAX_RETRIES = int(os.environ.get("DRPG_DOWNLOAD_RETRIES", "5"))
 RETRY_DELAY_SECONDS = float(os.environ.get("DRPG_DOWNLOAD_RETRY_DELAY", "2.0"))
 CHUNK_SIZE = int(os.environ.get("DRPG_DOWNLOAD_CHUNK_SIZE", "8192"))
@@ -183,7 +187,13 @@ class DrpgSync:
                 self._stream_download(url, part_path, start_offset)
                 _commit_download(part_path, path, product, item, self._config.validate)
                 return
-            except RETRYABLE_ERRORS as exc:
+            except RETRYABLE_ERRORS + (httpx.HTTPStatusError,) as exc:
+                # Permanent HTTP errors (404, 401, ...) are not worth retrying.
+                if (
+                    isinstance(exc, httpx.HTTPStatusError)
+                    and exc.response.status_code not in TRANSIENT_HTTP_STATUS
+                ):
+                    raise
                 start_offset = _part_file_offset(part_path)
                 logger.warning(
                     "Download attempt %d/%d failed for %s - %s: %s. Resuming from %d bytes.",
@@ -229,24 +239,21 @@ class DrpgSync:
             ) as response:
                 response.raise_for_status()
 
-                # If we requested a range but got a full 200, server doesn't support Range.
-                # Truncate the .part, reset state, and set flag to loop for a fresh request.
+                # A 200 (not 206) to a ranged request means the server ignored Range
+                # and is sending the whole file from byte 0. Truncate the .part and
+                # restart unconditionally -- do NOT gate on content-length: a chunked
+                # 200 has no content-length, and falling through to append mode would
+                # concatenate a fresh full download onto the existing partial (corrupt).
                 if start_offset > 0 and response.status_code == 200:
-                    content_length = response.headers.get("content-length")
-                    if content_length:
-                        try:
-                            if int(content_length) > start_offset:
-                                logger.warning(
-                                    "Server does not support Range requests, restarting download"
-                                )
-                                with open(part_path, "wb"):
-                                    pass
-                                start_offset = 0
-                                headers.pop("Range", None)
-                                needs_retry = True
-                                continue  # skip the rest, let with-block close normally
-                        except ValueError:
-                            pass  # content-length wasn't an integer
+                    logger.warning(
+                        "Server does not support Range requests, restarting download"
+                    )
+                    with open(part_path, "wb"):
+                        pass
+                    start_offset = 0
+                    headers.pop("Range", None)
+                    needs_retry = True
+                    continue  # let this with-block close before the next opens
 
                 mode = "ab" if start_offset > 0 else "wb"
                 total_size = _response_total_size(response)
@@ -292,7 +299,7 @@ class DrpgSync:
         if (
             self._config.use_checksums
             and (checksum := _newest_checksum(item))
-            and md5(path.read_bytes()).hexdigest() != checksum
+            and _stream_md5(path) != checksum
         ):
             logger.debug(
                 "Needs download: %s - %s: unmatching checksum",

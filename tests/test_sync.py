@@ -8,6 +8,7 @@ from os import stat_result
 from pathlib import Path
 from unittest import TestCase, mock
 
+import httpx
 import respx
 from httpx import HTTPError
 
@@ -247,6 +248,44 @@ class DrpgSyncProcessItemTest(TestCase):
             self.assertTrue(path.exists())
             self.assertEqual(path.read_bytes(), self.content)
             self.assertIn("bytes=3-", request.calls.last.request.headers["range"])
+
+    @mock.patch("drpg.sync.logger")
+    @mock.patch("drpg.DrpgSync._file_path")
+    @mock.patch("drpg.api.DrpgApi.prepare_download_url", return_value=download_url)
+    @respx.mock(base_url=DrpgApi.API_URL, using="httpx")
+    def test_resumes_partial_download_when_server_does_not_support_range(self, _, _file_path, logger, respx_mock):
+        """When server ignores Range header, download restarts from beginning."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "rulebook" / "test.pdf"
+            _file_path.return_value = path
+            part_path = path.with_suffix(path.suffix + ".part")
+            part_path.parent.mkdir(parents=True, exist_ok=True)
+            part_path.write_bytes(self.content[:3])
+
+            # Server ignores Range header and sends full content (200 instead of 206)
+            # We need to mock two calls: first with Range header, then without
+            route = respx_mock.get(self.download_url["url"])
+            route.side_effect = [
+                httpx.Response(
+                    200,
+                    content=self.content,
+                    headers={"Content-Length": str(len(self.content))},
+                ),
+                httpx.Response(
+                    200,
+                    content=self.content,
+                    headers={"Content-Length": str(len(self.content))},
+                ),
+            ]
+
+            self.sync._process_item(self.product, self.item)
+
+            self.assertTrue(path.exists())
+            self.assertEqual(path.read_bytes(), self.content)
+            # First call should have Range header
+            self.assertIn("bytes=3-", route.calls[0].request.headers["range"])
+            # Second call should not have Range header (it was removed)
+            self.assertNotIn("range", route.calls[1].request.headers)
 
     @mock.patch("drpg.sync.logger")
     @mock.patch("drpg.api.DrpgApi.prepare_download_url")

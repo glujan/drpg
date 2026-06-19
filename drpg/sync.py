@@ -217,7 +217,6 @@ class DrpgSync:
             logger.info("Resuming download from %d bytes", start_offset)
 
         part_path.parent.mkdir(parents=True, exist_ok=True)
-        mode = "ab" if start_offset > 0 else "wb"
         with self._download_client.stream(
             "GET",
             url,
@@ -225,6 +224,37 @@ class DrpgSync:
             headers=headers,
         ) as response:
             response.raise_for_status()
+            
+            # Check if server honored our Range request
+            content_range = response.headers.get("content-range", "")
+            content_length = response.headers.get("content-length")
+            
+            # If we requested a range but got a full response, server doesn't support Range
+            if start_offset > 0 and response.status_code == 200 and content_length:
+                try:
+                    full_size = int(content_length)
+                    if full_size > start_offset:
+                        logger.warning(
+                            "Server does not support Range requests, restarting download"
+                        )
+                        # Truncate the file and restart from the beginning
+                        with open(part_path, "wb") as f:
+                            pass  # This truncates the file
+                        start_offset = 0
+                        # Retry the request without the Range header
+                        headers.pop("Range", None)
+                        with self._download_client.stream(
+                            "GET",
+                            url,
+                            follow_redirects=True,
+                            headers=headers,
+                        ) as retry_response:
+                            retry_response.raise_for_status()
+                            response = retry_response
+                except ValueError:
+                    pass  # content-length wasn't an integer
+
+            mode = "ab" if start_offset > 0 else "wb"
             total_size = _response_total_size(response)
             with open(part_path, mode) as f:
                 for chunk in response.iter_bytes(CHUNK_SIZE):

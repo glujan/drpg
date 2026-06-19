@@ -63,9 +63,17 @@ DEBUG, INFO, WARNING, ERROR, CRITICAL.
 You can do a "dry run" of the app by specifying `--dry-run`. This will determine
 all the digital content you have purchased, but instead of downloading each file
 it will print one line of information to show what file *would* have been downloaded
-if the `--dry-run` flag wasn't on. Use this if you want to test out the app without
-taking the time to download anything.
+if the `--dry-run` flag wasn't on.
 
+For more information, run the script with `--help`.
+
+### Environment Variables
+
+The following environment variables can be used to configure the download behavior:
+
+* `DRPG_DOWNLOAD_RETRIES` - Number of times to retry a failed download (default: 5)
+* `DRPG_DOWNLOAD_RETRY_DELAY` - Delay in seconds between retries, with exponential backoff (default: 2.0)
+* `DRPG_DOWNLOAD_CHUNK_SIZE` - Size of chunks to download at a time in bytes (default: 8192)
 For more information, run the script with `--help`.
 
 ## Found a bug?

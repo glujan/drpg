@@ -1,5 +1,6 @@
 import json
 import string
+import tempfile
 from datetime import datetime, timedelta
 from functools import partial
 from hashlib import md5
@@ -205,19 +206,47 @@ class DrpgSyncProcessItemTest(TestCase):
         )
         self.sync = drpg.DrpgSync(dummy_config)
 
-    @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock())
+    @mock.patch("drpg.DrpgSync._file_path")
     @mock.patch("drpg.api.DrpgApi.prepare_download_url", return_value=download_url)
     @respx.mock(base_url=DrpgApi.API_URL, using="httpx")
-    def test_writes_to_file(self, _, file_path, respx_mock):
-        respx_mock.get(self.download_url["url"]).respond(200, content=self.content)
+    def test_writes_to_file(self, _, _file_path, respx_mock):
+        """Streaming download writes the full payload via a .part sidecar."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "rulebook" / "test.pdf"
+            _file_path.return_value = path
+            respx_mock.get(self.download_url["url"]).respond(200, content=self.content)
 
-        path = file_path.return_value
-        type(path).parent = mock.PropertyMock(return_value=PathMock())
+            self.sync._process_item(self.product, self.item)
 
-        self.sync._process_item(self.product, self.item)
+            self.assertTrue(path.exists())
+            self.assertEqual(path.read_bytes(), self.content)
+            self.assertFalse(path.with_suffix(path.suffix + ".part").exists())
 
-        path.parent.mkdir.assert_called_once_with(parents=True, exist_ok=True)
-        path.write_bytes.assert_called_once_with(self.content)
+    @mock.patch("drpg.sync.logger")
+    @mock.patch("drpg.DrpgSync._file_path")
+    @mock.patch("drpg.api.DrpgApi.prepare_download_url", return_value=download_url)
+    @respx.mock(base_url=DrpgApi.API_URL, using="httpx")
+    def test_resumes_partial_download(self, _, _file_path, logger, respx_mock):
+        """A broken first attempt is resumed from the partially-written .part file."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "rulebook" / "test.pdf"
+            _file_path.return_value = path
+            part_path = path.with_suffix(path.suffix + ".part")
+            part_path.parent.mkdir(parents=True, exist_ok=True)
+            part_path.write_bytes(self.content[:3])
+
+            # Server should receive a Range request starting after what we have.
+            request = respx_mock.get(self.download_url["url"]).respond(
+                206,
+                content=self.content[3:],
+                headers={"Content-Range": f"bytes 3-/{len(self.content)}"},
+            )
+
+            self.sync._process_item(self.product, self.item)
+
+            self.assertTrue(path.exists())
+            self.assertEqual(path.read_bytes(), self.content)
+            self.assertIn("bytes=3-", request.calls.last.request.headers["range"])
 
     @mock.patch("drpg.sync.logger")
     @mock.patch("drpg.api.DrpgApi.prepare_download_url")
@@ -248,16 +277,20 @@ class DrpgSyncProcessItemTest(TestCase):
             self.assertIn("Could not download product", msg)
 
     @mock.patch("drpg.sync.logger")
-    @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock())
+    @mock.patch("drpg.DrpgSync._file_path")
     @mock.patch("drpg.api.DrpgApi.prepare_download_url", return_value=download_url)
     @respx.mock(base_url=DrpgApi.API_URL, using="httpx")
     def test_invalid_download(self, _prepare_download_url, _file_path, logger, respx_mock):
         respx_mock.get(self.download_url["url"]).respond(200, content=b"wrong-content")
-        config = dummy_config()
-        config.validate = True
-        drpg.DrpgSync(config)._process_item(self.product, self.item)
-        logger.error.assert_called_once()
-        self.assertIn("Invalid checksum", logger.error.call_args.args[0])
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "rulebook" / "test.pdf"
+            _file_path.return_value = path
+            config = dummy_config()
+            config.validate = True
+            drpg.DrpgSync(config)._process_item(self.product, self.item)
+            logger.error.assert_called_once()
+            self.assertIn("Invalid checksum", logger.error.call_args.args[0])
+            self.assertFalse(path.exists())
 
     @mock.patch("drpg.sync.logger")
     @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock())

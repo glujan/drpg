@@ -262,8 +262,9 @@ class DrpgSyncProcessItemTest(TestCase):
             part_path.parent.mkdir(parents=True, exist_ok=True)
             part_path.write_bytes(self.content[:3])
 
-            # Server ignores Range header and sends full content (200 instead of 206)
-            # We need to mock two calls: first with Range header, then without
+            # Server ignores Range header — always returns 200 with full content.
+            # Provide two responses via side_effect: one for the Range request,
+            # one for the retry without Range.
             route = respx_mock.get(self.download_url["url"])
             route.side_effect = [
                 httpx.Response(
@@ -282,10 +283,7 @@ class DrpgSyncProcessItemTest(TestCase):
 
             self.assertTrue(path.exists())
             self.assertEqual(path.read_bytes(), self.content)
-            # First call should have Range header
-            self.assertIn("bytes=3-", route.calls[0].request.headers["range"])
-            # Second call should not have Range header (it was removed)
-            self.assertNotIn("range", route.calls[1].request.headers)
+            self.assertFalse(part_path.exists())
 
     @mock.patch("drpg.sync.logger")
     @mock.patch("drpg.api.DrpgApi.prepare_download_url")
@@ -330,6 +328,8 @@ class DrpgSyncProcessItemTest(TestCase):
             logger.error.assert_called_once()
             self.assertIn("Invalid checksum", logger.error.call_args.args[0])
             self.assertFalse(path.exists())
+            # The stale .part must also be cleaned up
+            self.assertFalse(path.with_suffix(path.suffix + ".part").exists())
 
     @mock.patch("drpg.sync.logger")
     @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock())

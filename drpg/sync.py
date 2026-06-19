@@ -217,58 +217,52 @@ class DrpgSync:
             logger.info("Resuming download from %d bytes", start_offset)
 
         part_path.parent.mkdir(parents=True, exist_ok=True)
-        with self._download_client.stream(
-            "GET",
-            url,
-            follow_redirects=True,
-            headers=headers,
-        ) as response:
-            response.raise_for_status()
-            
-            # Check if server honored our Range request
-            content_range = response.headers.get("content-range", "")
-            content_length = response.headers.get("content-length")
-            
-            # If we requested a range but got a full response, server doesn't support Range
-            if start_offset > 0 and response.status_code == 200 and content_length:
-                try:
-                    full_size = int(content_length)
-                    if full_size > start_offset:
-                        logger.warning(
-                            "Server does not support Range requests, restarting download"
+
+        needs_retry = True
+        while needs_retry:
+            needs_retry = False
+            with self._download_client.stream(
+                "GET",
+                url,
+                follow_redirects=True,
+                headers=headers,
+            ) as response:
+                response.raise_for_status()
+
+                # If we requested a range but got a full 200, server doesn't support Range.
+                # Truncate the .part, reset state, and set flag to loop for a fresh request.
+                if start_offset > 0 and response.status_code == 200:
+                    content_length = response.headers.get("content-length")
+                    if content_length:
+                        try:
+                            if int(content_length) > start_offset:
+                                logger.warning(
+                                    "Server does not support Range requests, restarting download"
+                                )
+                                with open(part_path, "wb"):
+                                    pass
+                                start_offset = 0
+                                headers.pop("Range", None)
+                                needs_retry = True
+                                continue  # skip the rest, let with-block close normally
+                        except ValueError:
+                            pass  # content-length wasn't an integer
+
+                mode = "ab" if start_offset > 0 else "wb"
+                total_size = _response_total_size(response)
+                with open(part_path, mode) as f:
+                    for chunk in response.iter_bytes(CHUNK_SIZE):
+                        if self._shutdown_event.is_set():
+                            return
+                        f.write(chunk)
+
+                # If the server advertised a full size and we did not resume, verify it.
+                if total_size is not None and start_offset == 0:
+                    got = part_path.stat().st_size
+                    if got != total_size:
+                        raise httpx.RemoteProtocolError(
+                            f"Incomplete download: got {got} bytes, expected {total_size}"
                         )
-                        # Truncate the file and restart from the beginning
-                        with open(part_path, "wb") as f:
-                            pass  # This truncates the file
-                        start_offset = 0
-                        # Retry the request without the Range header
-                        headers.pop("Range", None)
-                        with self._download_client.stream(
-                            "GET",
-                            url,
-                            follow_redirects=True,
-                            headers=headers,
-                        ) as retry_response:
-                            retry_response.raise_for_status()
-                            response = retry_response
-                except ValueError:
-                    pass  # content-length wasn't an integer
-
-            mode = "ab" if start_offset > 0 else "wb"
-            total_size = _response_total_size(response)
-            with open(part_path, mode) as f:
-                for chunk in response.iter_bytes(CHUNK_SIZE):
-                    if self._shutdown_event.is_set():
-                        return
-                    f.write(chunk)
-
-        # If the server advertised a full size and we did not resume, verify it.
-        if total_size is not None and start_offset == 0:
-            got = part_path.stat().st_size
-            if got != total_size:
-                raise httpx.RemoteProtocolError(
-                    f"Incomplete download: got {got} bytes, expected {total_size}"
-                )
 
     def _need_download(self, product: Product, item: DownloadItem) -> bool:
         """Specify whether or not the item needs to be downloaded."""
@@ -405,7 +399,7 @@ def _commit_download(
     if (
         validate
         and (api_checksum := _newest_checksum(item))
-        and (local_checksum := md5(part_path.read_bytes()).hexdigest()) != api_checksum
+        and (local_checksum := _stream_md5(part_path)) != api_checksum
     ):
         logger.error(
             "ERROR: Invalid checksum for %s - %s, skipping saving file (%s != %s)",
@@ -414,9 +408,23 @@ def _commit_download(
             api_checksum,
             local_checksum,
         )
+        # Remove the stale .part so the next run starts fresh, not resuming bad data.
+        try:
+            part_path.unlink()
+        except OSError:
+            pass
         return
 
     os.replace(part_path, path)
+
+
+def _stream_md5(path: Path, chunk_size: int = 65536) -> str:
+    """Compute MD5 hex digest of a file without loading it entirely into RAM."""
+    hasher = md5()
+    with open(path, "rb") as f:
+        while chunk := f.read(chunk_size):
+            hasher.update(chunk)
+    return hasher.hexdigest()
 
 
 class PathNormalizer:

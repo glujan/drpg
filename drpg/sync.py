@@ -59,6 +59,7 @@ def suppress_errors(*errors: type[Exception]) -> Decorator:
     return decorator
 
 
+@functools.total_ordering
 class DateVersion:
     def __init__(self, raw_date_version: str):
         parts = raw_date_version.split(".")
@@ -215,6 +216,15 @@ class DrpgSync:
                     )
                     raise
 
+    def _write_part(self, response: httpx.Response, part_path: Path, mode: str) -> bool:
+        """Stream the response body into the .part file. False if interrupted by shutdown."""
+        with open(part_path, mode) as f:
+            for chunk in response.iter_bytes(CHUNK_SIZE):
+                if self._shutdown_event.is_set():
+                    return False
+                f.write(chunk)
+        return True
+
     def _stream_download(self, url: str, part_path: Path, start_offset: int) -> None:
         """Stream a (possibly resumed) download into the .part file."""
         headers = {
@@ -248,8 +258,7 @@ class DrpgSync:
                     logger.warning(
                         "Server does not support Range requests, restarting download"
                     )
-                    with open(part_path, "wb"):
-                        pass
+                    part_path.write_bytes(b"")  # truncate the stale partial
                     start_offset = 0
                     headers.pop("Range", None)
                     needs_retry = True
@@ -257,11 +266,8 @@ class DrpgSync:
 
                 mode = "ab" if start_offset > 0 else "wb"
                 total_size = _response_total_size(response)
-                with open(part_path, mode) as f:
-                    for chunk in response.iter_bytes(CHUNK_SIZE):
-                        if self._shutdown_event.is_set():
-                            return
-                        f.write(chunk)
+                if not self._write_part(response, part_path, mode):
+                    return  # interrupted by shutdown
 
                 # If the server advertised a full size and we did not resume, verify it.
                 if total_size is not None and start_offset == 0:
@@ -385,7 +391,7 @@ def _part_file_offset(part_path: Path) -> int:
     """Return the byte offset of an existing partial download, or 0."""
     try:
         return part_path.stat().st_size
-    except (FileNotFoundError, OSError):
+    except OSError:
         return 0
 
 
@@ -427,7 +433,7 @@ def _commit_download(
 
 def _stream_md5(path: Path, chunk_size: int = 65536) -> str:
     """Compute MD5 hex digest of a file without loading it entirely into RAM."""
-    hasher = md5()
+    hasher = md5(usedforsecurity=False)
     with open(path, "rb") as f:
         while chunk := f.read(chunk_size):
             hasher.update(chunk)

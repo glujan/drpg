@@ -1,4 +1,7 @@
+import io
+import json
 import re
+from contextlib import redirect_stderr
 from functools import partial
 from unittest import TestCase, mock
 from urllib.parse import urlencode, urlparse
@@ -71,6 +74,23 @@ class DrpgApiCustomerProductsTest(TestCase):
         )
         products = self.client.customer_products()
         self.assertEqual(list(products), page_1_products + page_2_products)
+
+    @tmp_respx_mock(base_url=api_base_url)
+    def test_bad_page(self, respx_mock):
+        respx_mock.get(self.products_page).mock(
+            side_effect=[
+                Response(200, text="not json"),
+            ]
+        )
+
+        with redirect_stderr(io.StringIO()) as f:
+            with self.assertRaises(json.JSONDecodeError):
+                list(self.client.customer_products())
+
+        stderr = f.getvalue()
+        self.assertEqual(
+            stderr, "Failed to parse json for product page 1\nRaw output: 'not json'\n"
+        )
 
 
 class DrpgApiPrepareDownloadUrlTest(TestCase):

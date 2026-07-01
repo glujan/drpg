@@ -53,11 +53,11 @@ line-length = 100
 
 [tool.coverage.run]
 branch = true
-include = ["drpg/*"]
+include = ["drpg/*","tests/*"]
 omit = [".ropeproject", "venv"]
 
 [tool.coverage.report]
-omit = [".ropeproject", "venv", "tests/*"]
+omit = [".ropeproject", "venv"]
 
 [tool.hatch.version]
 path = "drpg/__init__.py"

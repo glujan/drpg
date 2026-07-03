@@ -257,7 +257,9 @@ class DrpgSyncProcessItemTest(TestCase):
     @mock.patch("drpg.DrpgSync._file_path")
     @mock.patch("drpg.api.DrpgApi.prepare_download_url", return_value=download_url)
     @respx.mock(base_url=DrpgApi.API_URL, using="httpx")
-    def test_resumes_partial_download_when_server_does_not_support_range(self, _, _file_path, logger, respx_mock):
+    def test_resumes_partial_download_when_server_does_not_support_range(
+        self, _, _file_path, logger, respx_mock
+    ):
         """When server ignores Range header, download restarts from beginning."""
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "rulebook" / "test.pdf"

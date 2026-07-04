@@ -16,6 +16,7 @@ class Config:
     compatibility_mode: bool = False
     omit_publisher: bool = False
     threads: int = 5
+    rewrite_folder_names: Path | None = None
     do_check: bool = True
 
     @classmethod
@@ -31,5 +32,6 @@ class Config:
             compatibility_mode=namespace.compatibility_mode,
             omit_publisher=namespace.omit_publisher,
             threads=namespace.threads,
+            rewrite_folder_names=namespace.rewrite_folder_names,
             do_check=namespace.do_check,
         )

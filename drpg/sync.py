@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import configparser
 import functools
 import html
 import logging
@@ -8,6 +9,7 @@ import threading
 from datetime import datetime, timedelta
 from hashlib import md5
 from multiprocessing.pool import ThreadPool
+from pathlib import Path
 from time import timezone
 from typing import TYPE_CHECKING
 
@@ -17,7 +19,6 @@ import drpg
 from drpg.api import DrpgApi
 
 if TYPE_CHECKING:  # pragma: no cover
-    from pathlib import Path
     from typing import Any, Callable
 
     from drpg.config import Config
@@ -68,6 +69,19 @@ class DrpgSync:
         self._api = DrpgApi(config.token)
         self._shutdown_event = threading.Event()
         self._download_client = httpx.Client(timeout=30.0)
+        self.rewrites: dict[str, str] = {}
+        if config.rewrite_folder_names is not None:
+            cp = configparser.ConfigParser()
+            with config.rewrite_folder_names.open() as cf:
+                cp.read_file(cf)
+                if "rewrite" not in cp.sections():
+                    raise configparser.Error(
+                        f"No 'rewrite' section in '{config.rewrite_folder_names}"
+                    )
+                for key, value in cp.items("rewrite"):
+                    if key.startswith('"') and key.endswith('"'):
+                        key = key[1:-1]
+                    self.rewrites[key] = value
 
     def __enter__(self) -> DrpgSync:
         return self
@@ -219,9 +233,27 @@ class DrpgSync:
         product_name = _normalize_path_part(product["name"], self._config.compatibility_mode)
         item_name = _normalize_path_part(item["filename"], self._config.compatibility_mode)
         if self._config.omit_publisher:
-            return self._config.library_path / product_name / item_name
+            return_path = self._config.library_path / product_name / item_name
         else:
-            return self._config.library_path / publishers_name / product_name / item_name
+            return_path = self._config.library_path / publishers_name / product_name / item_name
+
+        return_path_str = return_path.as_posix()
+        for key, value in self.rewrites.items():
+            # Keys are always lower case because ini files
+            lower_return_path = return_path_str.lower()
+
+            # We need to do this in a complicated way as the keys are not case sensitive
+            start_index = lower_return_path.find(key)
+            if start_index != -1:
+                new_return_path = (
+                    return_path_str[:start_index]
+                    + value
+                    + return_path_str[start_index + len(key) :]
+                )
+                logger.debug("rewriting %s -> %s", return_path_str, new_return_path)
+                return_path_str = new_return_path
+
+        return Path(return_path_str)
 
 
 def _normalize_path_part(part: str, compatibility_mode: bool) -> str:

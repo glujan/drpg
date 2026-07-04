@@ -26,6 +26,7 @@ class dummy_config:
     threads = 5
     compatibility_mode = False
     omit_publisher = False
+    rewrite_folder_names: Path | None = None
     do_check = True
 
 
@@ -183,6 +184,20 @@ class DrpgSyncFilePathTest(TestCase):
         config.omit_publisher = False
         path = drpg.DrpgSync(config)._file_path(product, item)
         self.assertIn(publisher, str(path))
+
+    def test_rewrite(self):
+        publisher = "Unit Publishing"
+        product = {
+            "name": "Rulebook - 2. ed",
+            "publisher": {"name": publisher},
+        }
+        item = {"filename": "filename.pdf"}
+
+        config = dummy_config()
+        config.omit_publisher = False
+        config.rewrite_folder_names = Path(__file__).parent.joinpath("test_config.ini")
+        path = drpg.DrpgSync(config)._file_path(product, item)
+        self.assertIn("NewName", str(path))
 
 
 class DrpgSyncProcessItemTest(TestCase):

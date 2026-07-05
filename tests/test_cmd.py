@@ -1,4 +1,5 @@
 import logging
+import threading
 from inspect import currentframe
 from os.path import expandvars
 from pathlib import Path
@@ -72,11 +73,23 @@ class ParseCliTest(TestCase):
 class SignalHandlerTest(TestCase):
     @mock.patch("drpg.cmd.sys.exit")
     def test_exits(self, m_exit):
+        cmd._shutdown_event = threading.Event()
         cmd._handle_signal(SIGTERM, currentframe())
         m_exit.assert_called_once_with(0)
 
 
-class SetHttpLogLevel(TestCase):
+class ExceptionHandlerTest(TestCase):
+    @mock.patch("drpg.cmd.logging.getLogger")
+    def test_excepthook(self, m_getLogger: mock.MagicMock):
+        m_logger = mock.MagicMock()
+        m_getLogger.return_value = m_logger
+        cmd._excepthook(Exception, Exception(), None)
+        m_getLogger.assert_called_once_with("drpg")
+        m_logger.error.assert_called_once_with("Unexpected error occurred, stopping!")
+        m_logger.info.assert_called_once_with("Exception\n")
+
+
+class SetLogLevels(TestCase):
     def test_debug(self):
         cmd._set_httpx_log_level(logging.DEBUG)
         self.assertEqual(logging.getLogger("httpx").level, logging.DEBUG)
@@ -90,6 +103,26 @@ class SetHttpLogLevel(TestCase):
                 self.assertEqual(logging.getLogger("httpx").level, logging.WARNING)
                 self.assertEqual(logging.getLogger("httpcore").level, logging.WARNING)
                 self.assertEqual(logging.getLogger("hpack").level, logging.WARNING)
+
+    def clear_handlers(self):
+        # In the actual app, we only ever call basic_config once, but we need to support calling it
+        # multiple times in tests. So clear out the root handlers first. Code is as per the
+        # force=True arg for basic_config.
+        for h in logging.root.handlers:
+            logging.root.removeHandler(h)
+            h.close()
+
+    def test_setup_logger_debug(self):
+        self.clear_handlers()
+        cmd._setup_logger("DEBUG")
+        self.assertEqual(logging.root.level, logging.DEBUG)
+        self.assertEqual(logging.getLogger("httpx").level, logging.DEBUG)
+
+    def test_setup_logger_warn(self):
+        self.clear_handlers()
+        cmd._setup_logger("WARNING")
+        self.assertEqual(logging.root.level, logging.WARNING)
+        self.assertEqual(logging.getLogger("httpx").level, logging.WARNING)
 
 
 class DefaultDirTest:

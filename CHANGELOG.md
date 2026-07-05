@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 2026.7.1
+* Check for latest drpg version in Github
+* If product page from DriveThruRPG API returns a non-JSON response, log it
+* Update dependencies
+* Build Flatpak distributions
+
 ## 2025.7.8
 * automatically retry failed API requests
 * support httpx 0.27-0.28+

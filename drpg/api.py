@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from enum import IntEnum
 from time import sleep
@@ -127,7 +128,7 @@ class DrpgApi:
     def _product_page(self, page: int, per_page: int) -> list[Product]:
         """List products from a specified page."""
 
-        return self._client.get(
+        resp = self._client.get(
             "order_products",
             params={
                 "getChecksum": 1,
@@ -137,4 +138,10 @@ class DrpgApi:
                 "library": 1,
                 "archived": 0,
             },
-        ).json()
+        )
+        try:
+            return resp.json()
+        except json.JSONDecodeError:
+            logger.error(f"Failed to parse json for product page {page}")
+            logger.error("Raw output: '%s'" % resp.text)
+            raise

@@ -10,3 +10,6 @@ __pycache__
 repository/
 .DS_Store
 .idea
+
+flatpak/python3-modules.yaml
+flatpak/repo/

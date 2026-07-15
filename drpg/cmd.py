@@ -43,7 +43,7 @@ def run() -> None:
 
 
 class ConfigFileAction(argparse.Action):
-    def __call__(self, parser, namespace, values, option_string=None):
+    def __call__(self, parser, namespace, values, option_string=None):  # noqa: C901
         if values is None:
             raise argparse.ArgumentError(self, "No config file specified")
         config_file = cast(Path, values)
@@ -55,6 +55,7 @@ class ConfigFileAction(argparse.Action):
             if "drpg" not in cp.sections():
                 raise argparse.ArgumentError(self, f"No drpg section in '{config_file}'")
             section = cp["drpg"]
+            keys = set(section.keys())
             for key in dataclasses.fields(Config):
                 if key.type == "bool":
                     value = section.getboolean(key.name)
@@ -66,8 +67,13 @@ class ConfigFileAction(argparse.Action):
                         value = Path(value)
                 else:
                     value = section.get(key.name)
+                keys.discard(key.name)
                 if value is not None:
                     setattr(namespace, key.name, value)
+            if len(keys) != 0:
+                raise argparse.ArgumentError(
+                    self, "Unsupported config keys: %s" % (", ".join(sorted(keys)))
+                )
 
 
 def _parse_cli(args: CliArgs | None = None) -> Config:

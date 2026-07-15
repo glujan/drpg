@@ -1,4 +1,5 @@
 import logging
+import tempfile
 import threading
 from inspect import currentframe
 from os.path import expandvars
@@ -68,6 +69,16 @@ class ParseCliTest(TestCase):
             omit_publisher=False,
             threads=10,
         ), config
+
+    @mock.patch("drpg.cmd.argparse.ArgumentParser.error")
+    def test_config_file_bad_parse(self, error_mock: mock.MagicMock):
+        test_config_path = Path(__file__).parent.joinpath("test_config.ini")
+        with tempfile.NamedTemporaryFile(mode="w") as bad_config_file:
+            bad_config_file.write(test_config_path.open().read())
+            bad_config_file.write("\nextra_arg=foo\n")
+            bad_config_file.flush()
+            cmd._parse_cli(["--config", bad_config_file.name])
+            error_mock.assert_any_call("argument --config: Unsupported config keys: extra_arg")
 
 
 class SignalHandlerTest(TestCase):

@@ -17,6 +17,7 @@ class Config:
     omit_publisher: bool = False
     threads: int = 5
     do_check: bool = True
+    log_up_to_date: bool = True
 
     @classmethod
     def from_namespace(cls, namespace: Any) -> Config:
@@ -32,4 +33,5 @@ class Config:
             omit_publisher=namespace.omit_publisher,
             threads=namespace.threads,
             do_check=namespace.do_check,
+            log_up_to_date=namespace.log_up_to_date,
         )

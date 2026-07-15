@@ -108,6 +108,13 @@ def _parse_cli(args: CliArgs | None = None) -> Config:
         default=environ.get("DRPG_NO_CHECK", "false").lower() == "false",
         help="Disable checking for updated version",
     )
+    parser.add_argument(
+        "--no-up-to-date",
+        action="store_false",
+        dest="log_up_to_date",
+        default=environ.get("DRPG_LOG_UP_TO_DATE", "false").lower() == "false",
+        help="Skip logging for up-to-date files",
+    )
 
     compability_group = parser.add_mutually_exclusive_group()
 

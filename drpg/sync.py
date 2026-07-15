@@ -209,7 +209,8 @@ class DrpgSync:
             )
             return True
 
-        logger.info("Up to date: %s - %s", product["name"], item["filename"])
+        if self._config.log_up_to_date:
+            logger.info("Up to date: %s - %s", product["name"], item["filename"])
         return False
 
     def _file_path(self, product: Product, item: DownloadItem) -> Path:

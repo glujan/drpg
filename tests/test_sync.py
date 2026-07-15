@@ -27,6 +27,7 @@ class dummy_config:
     compatibility_mode = False
     omit_publisher = False
     do_check = True
+    log_up_to_date = True
 
 
 PathMock = partial(mock.Mock, spec=Path)
@@ -74,32 +75,57 @@ class DrpgSyncNeedDownloadTest(TestCase):
         self.sync = drpg.DrpgSync(dummy_config)
 
     @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock(**no_file_kwargs))
-    def test_no_local_file(self, _):
+    @mock.patch("drpg.sync.logger")
+    def test_no_local_file(self, logger: mock.MagicMock, _):
         item = self.dummy_item(self.old_date)
         product = self.dummy_product(item)
 
         need = self.sync._need_download(product, item)
         self.assertTrue(need)
+        logger.debug.assert_called_once_with(
+            "Needs download: %s - %s: local file does not exist", "Test rule book", "file.pdf"
+        )
 
     @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock(**old_file_kwargs))
-    def test_local_last_modified_older(self, _):
+    @mock.patch("drpg.sync.logger")
+    def test_local_last_modified_older(self, logger: mock.MagicMock, _):
         item = self.dummy_item(self.new_date)
         product = self.dummy_product(item)
         product["fileLastModified"] = datetime.now().isoformat()
 
         need = self.sync._need_download(product, item)
         self.assertTrue(need)
+        logger.debug.assert_called_once_with(
+            "Needs download: %s - %s: local file is outdated", "Test rule book", "file.pdf"
+        )
 
     @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock(**new_file_kwargs))
-    def test_local_last_modified_newer(self, _):
+    @mock.patch("drpg.sync.logger")
+    def test_local_last_modified_newer(self, logger: mock.MagicMock, _):
         item = self.dummy_item(self.old_date)
         product = self.dummy_product(item)
 
         need = self.sync._need_download(product, item)
         self.assertFalse(need)
+        logger.info.assert_called_once_with("Up to date: %s - %s", "Test rule book", "file.pdf")
 
     @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock(**new_file_kwargs))
-    def test_md5_check(self, _):
+    @mock.patch("drpg.sync.logger")
+    def test_local_last_modified_newer_no_up_to_date(self, logger: mock.MagicMock, _):
+        item = self.dummy_item(self.old_date)
+        product = self.dummy_product(item)
+        self.sync._config.log_up_to_date = False
+
+        need = self.sync._need_download(product, item)
+        self.assertFalse(need)
+        logger.debug.assert_not_called()
+        logger.info.assert_not_called()
+
+        self.sync._config.log_up_to_date = True
+
+    @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock(**new_file_kwargs))
+    @mock.patch("drpg.sync.logger")
+    def test_md5_check(self, logger: mock.MagicMock, _):
         self.sync._config.use_checksums = True
 
         with self.subTest("same md5"):
@@ -108,6 +134,9 @@ class DrpgSyncNeedDownloadTest(TestCase):
 
             need = self.sync._need_download(product, item)
             self.assertFalse(need)
+            logger.info.assert_called_once_with("Up to date: %s - %s", "Test rule book", "file.pdf")
+
+        logger.reset_mock()
 
         with self.subTest("different md5"):
             item = self.dummy_item(self.old_date)
@@ -116,6 +145,11 @@ class DrpgSyncNeedDownloadTest(TestCase):
 
             need = self.sync._need_download(product, item)
             self.assertTrue(need)
+            logger.debug.assert_called_once_with(
+                "Needs download: %s - %s: unmatching checksum", "Test rule book", "file.pdf"
+            )
+
+        logger.reset_mock()
 
         with self.subTest("remote file has no checksum"):
             item = self.dummy_item(self.old_date)
@@ -124,6 +158,7 @@ class DrpgSyncNeedDownloadTest(TestCase):
 
             need = self.sync._need_download(product, item)
             self.assertFalse(need)
+            logger.info.assert_called_once_with("Up to date: %s - %s", "Test rule book", "file.pdf")
 
     def dummy_item(self, date):
         file_md5 = md5(self.file_content).hexdigest()

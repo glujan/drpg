@@ -3,11 +3,14 @@ from __future__ import annotations
 import functools
 import html
 import logging
+import os
 import re
 import threading
+import time
 from datetime import datetime, timedelta
 from hashlib import md5
 from multiprocessing.pool import ThreadPool
+from pathlib import Path
 from time import timezone
 from typing import TYPE_CHECKING
 
@@ -17,7 +20,6 @@ import drpg
 from drpg.api import DrpgApi
 
 if TYPE_CHECKING:  # pragma: no cover
-    from pathlib import Path
     from typing import Any, Callable
 
     from drpg.config import Config
@@ -27,6 +29,18 @@ if TYPE_CHECKING:  # pragma: no cover
     Decorator = Callable[[NoneCallable], NoneCallable]
 
 logger = logging.getLogger("drpg")
+
+# Tuned for large files: 30s connect/read, but no overall transfer limit.
+DOWNLOAD_TIMEOUT = httpx.Timeout(30.0, read=30.0)
+
+RETRYABLE_ERRORS = (httpx.RemoteProtocolError, httpx.NetworkError, httpx.ConnectError)
+# Transient HTTP statuses worth retrying (CDN hiccups + rate limiting). Permanent
+# statuses (404, 401, ...) must NOT retry. A 502 here is exactly what previously got
+# saved as a 173-byte "502 Bad Gateway" HTML file in place of the real download.
+TRANSIENT_HTTP_STATUS = frozenset({429, 500, 502, 503, 504})
+MAX_RETRIES = int(os.environ.get("DRPG_DOWNLOAD_RETRIES", "5"))
+RETRY_DELAY_SECONDS = float(os.environ.get("DRPG_DOWNLOAD_RETRY_DELAY", "2.0"))
+CHUNK_SIZE = int(os.environ.get("DRPG_DOWNLOAD_CHUNK_SIZE", "8192"))
 
 
 def suppress_errors(*errors: type[Exception]) -> Decorator:
@@ -45,6 +59,7 @@ def suppress_errors(*errors: type[Exception]) -> Decorator:
     return decorator
 
 
+@functools.total_ordering
 class DateVersion:
     def __init__(self, raw_date_version: str):
         parts = raw_date_version.split(".")
@@ -67,7 +82,7 @@ class DrpgSync:
         self._config = config
         self._api = DrpgApi(config.token)
         self._shutdown_event = threading.Event()
-        self._download_client = httpx.Client(timeout=30.0)
+        self._download_client = httpx.Client(timeout=DOWNLOAD_TIMEOUT)
 
     def __enter__(self) -> DrpgSync:
         return self
@@ -146,31 +161,121 @@ class DrpgSync:
                 )
                 return
 
-            file_response = self._download_client.get(
+            self._download_with_resume_and_retry(
                 url_data["url"],
-                follow_redirects=True,
-                headers={
-                    "Accept-Encoding": "gzip, deflate, br",
-                    "User-Agent": "Mozilla/5.0",
-                    "Accept": "*/*",
-                },
+                path,
+                product,
+                item,
             )
 
-            if (
-                self._config.validate
-                and (api_checksum := _newest_checksum(item))
-                and (local_checksum := md5(file_response.content).hexdigest()) != api_checksum
-            ):
-                logger.error(
-                    "ERROR: Invalid checksum for %s - %s, skipping saving file (%s != %s))",
+    def _download_with_resume_and_retry(
+        self,
+        url: str,
+        path: Path,
+        product: Product,
+        item: DownloadItem,
+    ) -> None:
+        """Stream-download a file with HTTP Range resume and retry on transient errors.
+
+        Writes to a .part file next to the destination and renames it into place
+        only after the full download completes.
+        """
+        part_path = _part_path_for(path)
+        start_offset = _part_file_offset(part_path)
+
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                self._stream_download(url, part_path, start_offset)
+                _commit_download(part_path, path, product, item, self._config.validate)
+                return
+            except RETRYABLE_ERRORS + (httpx.HTTPStatusError,) as exc:
+                # Permanent HTTP errors (404, 401, ...) are not worth retrying.
+                if (
+                    isinstance(exc, httpx.HTTPStatusError)
+                    and exc.response.status_code not in TRANSIENT_HTTP_STATUS
+                ):
+                    raise
+                start_offset = _part_file_offset(part_path)
+                logger.warning(
+                    "Download attempt %d/%d failed for %s - %s: %s. Resuming from %d bytes.",
+                    attempt,
+                    MAX_RETRIES,
                     product["name"],
                     item["filename"],
-                    api_checksum,
-                    local_checksum,
+                    exc,
+                    start_offset,
                 )
-            else:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_bytes(file_response.content)
+                if attempt < MAX_RETRIES:
+                    time.sleep(RETRY_DELAY_SECONDS * attempt)
+                else:
+                    logger.error(
+                        "Giving up on %s - %s after %d attempts",
+                        product["name"],
+                        item["filename"],
+                        MAX_RETRIES,
+                    )
+                    raise
+
+    def _write_part(self, response: httpx.Response, part_path: Path, mode: str) -> bool:
+        """Stream the response body into the .part file. False if interrupted by shutdown."""
+        with open(part_path, mode) as f:
+            for chunk in response.iter_bytes(CHUNK_SIZE):
+                if self._shutdown_event.is_set():
+                    return False
+                f.write(chunk)
+        return True
+
+    def _stream_download(self, url: str, part_path: Path, start_offset: int) -> None:
+        """Stream a (possibly resumed) download into the .part file."""
+        headers = {
+            "Accept-Encoding": "gzip, deflate, br",
+            "User-Agent": "Mozilla/5.0",
+            "Accept": "*/*",
+        }
+        if start_offset > 0:
+            headers["Range"] = f"bytes={start_offset}-"
+            logger.info("Resuming download from %d bytes", start_offset)
+
+        part_path.parent.mkdir(parents=True, exist_ok=True)
+
+        needs_retry = True
+        while needs_retry:
+            needs_retry = False
+            with self._download_client.stream(
+                "GET",
+                url,
+                follow_redirects=True,
+                headers=headers,
+            ) as response:
+                response.raise_for_status()
+
+                # A 200 (not 206) to a ranged request means the server ignored Range
+                # and is sending the whole file from byte 0. Truncate the .part and
+                # restart unconditionally -- do NOT gate on content-length: a chunked
+                # 200 has no content-length, and falling through to append mode would
+                # concatenate a fresh full download onto the existing partial (corrupt).
+                if start_offset > 0 and response.status_code == 200:
+                    logger.warning(
+                        "Server does not support Range requests, restarting download"
+                    )
+                    part_path.write_bytes(b"")  # truncate the stale partial
+                    start_offset = 0
+                    headers.pop("Range", None)
+                    needs_retry = True
+                    continue  # let this with-block close before the next opens
+
+                mode = "ab" if start_offset > 0 else "wb"
+                total_size = _response_total_size(response)
+                if not self._write_part(response, part_path, mode):
+                    return  # interrupted by shutdown
+
+                # If the server advertised a full size and we did not resume, verify it.
+                if total_size is not None and start_offset == 0:
+                    got = part_path.stat().st_size
+                    if got != total_size:
+                        raise httpx.RemoteProtocolError(
+                            f"Incomplete download: got {got} bytes, expected {total_size}"
+                        )
 
     def _need_download(self, product: Product, item: DownloadItem) -> bool:
         """Specify whether or not the item needs to be downloaded."""
@@ -200,7 +305,7 @@ class DrpgSync:
         if (
             self._config.use_checksums
             and (checksum := _newest_checksum(item))
-            and md5(path.read_bytes()).hexdigest() != checksum
+            and _stream_md5(path) != checksum
         ):
             logger.debug(
                 "Needs download: %s - %s: unmatching checksum",
@@ -261,6 +366,78 @@ def _newest_checksum(item: DownloadItem) -> str | None:
         default={"checksum": None},
         key=lambda s: datetime.fromisoformat(s["checksumDate"]),
     )["checksum"]
+
+
+def _response_total_size(response: httpx.Response) -> int | None:
+    """Return the total expected size for a response, accounting for ranges."""
+    # Content-Range: bytes 1234-5678/9999
+    content_range = response.headers.get("content-range", "")
+    if content_range and "/" in content_range:
+        try:
+            return int(content_range.split("/")[-1])
+        except (ValueError, IndexError):
+            pass
+    # Standard full download.
+    content_length = response.headers.get("content-length")
+    if content_length:
+        try:
+            return int(content_length)
+        except ValueError:
+            pass
+    return None
+
+
+def _part_file_offset(part_path: Path) -> int:
+    """Return the byte offset of an existing partial download, or 0."""
+    try:
+        return part_path.stat().st_size
+    except OSError:
+        return 0
+
+
+def _part_path_for(path: Path) -> Path:
+    """Return the .part sidecar path for a destination file."""
+    # Use Path arithmetic to avoid depending on a real Path.suffix when mocked.
+    return path.parent / (path.name + ".part")
+
+
+def _commit_download(
+    part_path: Path,
+    path: Path,
+    product: Product,
+    item: DownloadItem,
+    validate: bool,
+) -> None:
+    """Validate checksum and atomically move the .part file into place."""
+    if (
+        validate
+        and (api_checksum := _newest_checksum(item))
+        and (local_checksum := _stream_md5(part_path)) != api_checksum
+    ):
+        logger.error(
+            "ERROR: Invalid checksum for %s - %s, skipping saving file (%s != %s)",
+            product["name"],
+            item["filename"],
+            api_checksum,
+            local_checksum,
+        )
+        # Remove the stale .part so the next run starts fresh, not resuming bad data.
+        try:
+            part_path.unlink()
+        except OSError:
+            pass
+        return
+
+    os.replace(part_path, path)
+
+
+def _stream_md5(path: Path, chunk_size: int = 65536) -> str:
+    """Compute MD5 hex digest of a file without loading it entirely into RAM."""
+    hasher = md5(usedforsecurity=False)
+    with open(path, "rb") as f:
+        while chunk := f.read(chunk_size):
+            hasher.update(chunk)
+    return hasher.hexdigest()
 
 
 class PathNormalizer:

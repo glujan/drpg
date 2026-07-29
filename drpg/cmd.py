@@ -113,7 +113,7 @@ def _parse_cli(args: CliArgs | None = None) -> Config:
         action="store_false",
         dest="log_up_to_date",
         default=environ.get("DRPG_LOG_UP_TO_DATE", "false").lower() == "false",
-        help="Skip logging for up-to-date files",
+        help="Reduce logging for up-to-date files to debug",
     )
 
     compability_group = parser.add_mutually_exclusive_group()

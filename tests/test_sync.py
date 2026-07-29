@@ -1,4 +1,5 @@
 import json
+import logging
 import string
 from datetime import datetime, timedelta
 from functools import partial
@@ -107,7 +108,9 @@ class DrpgSyncNeedDownloadTest(TestCase):
 
         need = self.sync._need_download(product, item)
         self.assertFalse(need)
-        logger.info.assert_called_once_with("Up to date: %s - %s", "Test rule book", "file.pdf")
+        logger.log.assert_called_once_with(
+            logging.INFO, "Up to date: %s - %s", "Test rule book", "file.pdf"
+        )
 
     @mock.patch("drpg.DrpgSync._file_path", return_value=PathMock(**new_file_kwargs))
     @mock.patch("drpg.sync.logger")
@@ -118,8 +121,9 @@ class DrpgSyncNeedDownloadTest(TestCase):
 
         need = self.sync._need_download(product, item)
         self.assertFalse(need)
-        logger.debug.assert_not_called()
-        logger.info.assert_not_called()
+        logger.log.assert_called_once_with(
+            logging.DEBUG, "Up to date: %s - %s", "Test rule book", "file.pdf"
+        )
 
         self.sync._config.log_up_to_date = True
 
@@ -134,7 +138,9 @@ class DrpgSyncNeedDownloadTest(TestCase):
 
             need = self.sync._need_download(product, item)
             self.assertFalse(need)
-            logger.info.assert_called_once_with("Up to date: %s - %s", "Test rule book", "file.pdf")
+            logger.log.assert_called_once_with(
+                logging.INFO, "Up to date: %s - %s", "Test rule book", "file.pdf"
+            )
 
         logger.reset_mock()
 
@@ -158,7 +164,9 @@ class DrpgSyncNeedDownloadTest(TestCase):
 
             need = self.sync._need_download(product, item)
             self.assertFalse(need)
-            logger.info.assert_called_once_with("Up to date: %s - %s", "Test rule book", "file.pdf")
+            logger.log.assert_called_once_with(
+                logging.INFO, "Up to date: %s - %s", "Test rule book", "file.pdf"
+            )
 
     def dummy_item(self, date):
         file_md5 = md5(self.file_content).hexdigest()

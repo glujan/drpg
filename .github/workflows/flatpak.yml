@@ -16,6 +16,7 @@ jobs:
     - name: Build Python dependencies list
       working-directory: flatpak
       run: |
+        sudo apt update
         sudo apt install flatpak
         flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
         flatpak install --user --assumeyes org.flatpak.Builder

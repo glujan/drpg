@@ -53,6 +53,12 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - build
+    env:
+      # These stop SonarCloud S8544/S8541
+      # See also https://gitub.com/astral-sh/uv/issues/17416
+      UV_NO_BUILD: 1
+      UV_NO_BINARY_PACKAGE: drpg
+      UV_LOCKED: 1
     steps:
     - uses: >- # v6.0.2
         actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0

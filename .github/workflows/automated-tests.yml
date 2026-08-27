@@ -6,9 +6,15 @@ on:
   pull_request:
     branches: [ master ]
 
+env:
+  # These stop SonarCloud S8544/S8541
+  # See also https://gitub.com/astral-sh/uv/issues/17416
+  UV_NO_BUILD: 1
+  UV_NO_BINARY_PACKAGE: drpg
+  UV_LOCKED: 1
+
 jobs:
   build:
-
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -47,4 +53,6 @@ jobs:
         uv run tox
     - name: Test build sdist and wheel packages
       run: |
+        # Need this elsewhere, but this breaks with it!
+        unset UV_NO_BUILD
         uv build

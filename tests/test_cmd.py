@@ -9,11 +9,14 @@ from unittest import TestCase, mock
 from httpx import URL
 
 from drpg import cmd
+from drpg.config import Config
 
 
 class ParseCliTest(TestCase):
     @mock.patch("drpg.cmd.argparse.ArgumentParser.error")
     def test_has_required_params(self, error_mock):
+        # Because otherwise this breaks with environments that already have things set
+        cmd.environ.clear()
         cmd._parse_cli([])
         error_mock.assert_called_once()
 
@@ -27,7 +30,7 @@ class ParseCliTest(TestCase):
             "DRPG_DRY_RUN": "true",
             "DRPG_THREADS": "1",
             "DRPG_COMPATIBILITY_MODE": "true",
-            "DRPG_OMIT_PUBLISHER": "true",
+            "DRPG_OMIT_PUBLISHER": "false",
             "DRPG_NO_CHECK": "true",
         }
 
@@ -42,13 +45,29 @@ class ParseCliTest(TestCase):
         self.assertTrue(config.dry_run)
         self.assertEqual(config.threads, int(env["DRPG_THREADS"]))
         self.assertTrue(config.compatibility_mode)
-        self.assertTrue(config.omit_publisher)
+        self.assertFalse(config.omit_publisher)
         self.assertFalse(config.do_check)
 
     @mock.patch("drpg.cmd.argparse.ArgumentParser.error")
     def test_compability_mutually_exclusive_group(self, error_mock):
         cmd._parse_cli(["--compatibility-mode", "--omit-publisher", "--token", "mock_token"])
         error_mock.assert_called()
+
+    def test_config_file_parse(self):
+        config = cmd._parse_cli(
+            ["--config", Path(__file__).parent.joinpath("test_config.ini").as_posix()]
+        )
+        assert config == Config(
+            token="supersecrettoken",
+            library_path=Path("/a/nother/path"),
+            use_checksums=True,
+            validate=True,
+            log_level="DEBUG",
+            dry_run=True,
+            compatibility_mode=True,
+            omit_publisher=False,
+            threads=10,
+        ), config
 
 
 class SignalHandlerTest(TestCase):

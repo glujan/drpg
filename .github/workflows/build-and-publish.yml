@@ -12,9 +12,9 @@ jobs:
 
     steps:
     - uses: >- # v6.0.2
-        actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
     - uses: >- # v8.0.0
-        astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39
+        astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
       with:
         python-version: '3.12'
         enable-cache: true
@@ -61,7 +61,7 @@ jobs:
       UV_LOCKED: 1
     steps:
     - uses: >- # v6.0.2
-        actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
     - name: Retrieve release distributions
       uses: >- # v8.0.1
         actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
@@ -69,7 +69,7 @@ jobs:
         name: release-dists
         path: dist/
     - uses: >- # v8.0.0
-        astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39
+        astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
       with:
         python-version: '3.12'
         enable-cache: true
@@ -81,7 +81,7 @@ jobs:
         uv run pyinstaller pyinstaller-linux.spec
     - name: Create GitHub release
       uses: >- # v2.6.1
-        softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b
+        softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64
       with:
         generate_release_notes: true
         make_latest: true
@@ -101,15 +101,15 @@ jobs:
       packages: write
     steps:
     - uses: >- # v6.0.2
-        actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
     - name: Set up Docker Buildx
-      uses: >- # v3.10.0
-        docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2
+      uses: >- # v4.4.1
+        docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
 
     - name: Log in to GitHub Container Registry
-      uses: >- # v3.4.0
-        docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772
+      uses: >- # v4.6.0
+        docker/login-action@dbcb813823bdd20940b903addbd779551569679f
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
@@ -117,8 +117,8 @@ jobs:
 
     - name: Extract metadata for Docker
       id: meta
-      uses: >- # v5.7.0
-        docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804
+      uses: >- # v6.2.0
+        docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302
       with:
         images: ghcr.io/${{ github.repository }}
         tags: |
@@ -129,8 +129,8 @@ jobs:
           type=ref,event=tag
 
     - name: Build and push Docker image
-      uses: >- # v6.16.0
-        docker/build-push-action@14487ce63c7a62a4a324b0bfb37086795e31c6c1
+      uses: >- # v7.4.0
+        docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc
       with:
         context: .
         push: true
